@@ -35,6 +35,9 @@ runs:
     - uses: hashicorp/setup-terraform@v1
       with:
         terraform_wrapper: false
+    - name: Set TESTNET_ID env
+      shell: bash
+      run: echo "TESTNET_ID=gha-testnet-$(echo $GITHUB_SHA | cut -c 1-7)" >> $GITHUB_ENV
     - name: Deploy Testnet
       env:
         DO_PAT: ${{ inputs.do-token }}
@@ -47,7 +50,7 @@ runs:
           git clone https://github.com/lionel1704/sn_testnet_tool ${{ github.action_path }}/sn_testnet_tool --depth 1
           cd ${{ github.action_path }}/sn_testnet_tool
           terraform init
-          terraform workspace select ${{ github.sha }} || terraform workspace new ${{ github.sha }}
+          terraform workspace select ${{ env.TESTNET_ID }} || terraform workspace new ${{ env.TESTNET_ID }}
           echo "${{ inputs.ssh-secret-key }}" > ${{ github.action_path }}/id_rsa
           chmod 600 ${{ github.action_path }}/id_rsa
           eval `ssh-agent`
@@ -62,12 +65,15 @@ runs:
     - name: Destroy Testnet
       env:
         DO_PAT: ${{ inputs.do-token }}
+        AWS_ACCESS_KEY_ID: ${{ inputs.aws-access-key-id }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws-access-key-secret }}
+        AWS_DEFAULT_REGION: ${{ inputs.aws-default-region }}
       shell: bash
       run: |
         if [[ "${{inputs.action}}" == "destroy" ]]; then
           git clone https://github.com/lionel1704/sn_testnet_tool ${{ github.action_path }}/sn_testnet_tool --depth 1
           cd ${{ github.action_path }}/sn_testnet_tool
           terraform init
-          terraform workspace select ${{ github.sha }} || terraform workspace new ${{ github.sha }}
+          terraform workspace select ${{ env.TESTNET_ID }} || terraform workspace new ${{ env.TESTNET_ID }}
           ${{ github.action_path }}/sn_testnet_tool/down.sh dummy-arg "-auto-approve"
         fi
