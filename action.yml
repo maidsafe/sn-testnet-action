@@ -69,5 +69,5 @@ runs:
           cd ${{ github.action_path }}/sn_testnet_tool
           terraform init
           terraform workspace select ${{ github.sha }} || terraform workspace new ${{ github.sha }}
-          ${{ github.action_path }}/sn_testnet_tool/down.sh
+          ${{ github.action_path }}/sn_testnet_tool/down.sh dummy-arg "-auto-approve"
         fi
