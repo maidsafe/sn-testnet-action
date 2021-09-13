@@ -64,7 +64,7 @@ runs:
         DO_PAT: ${{ inputs.do-token }}
       shell: bash
       run: |
-        if [[ "${{inputs.action}}" == "create" ]]; then
+        if [[ "${{inputs.action}}" == "destroy" ]]; then
           git clone https://github.com/lionel1704/sn_testnet_tool ${{ github.action_path }}/sn_testnet_tool --depth 1
           cd ${{ github.action_path }}/sn_testnet_tool
           terraform init
