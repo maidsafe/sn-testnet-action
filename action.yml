@@ -61,7 +61,7 @@ runs:
     - uses: actions/upload-artifact@v2
       with:
         name: node_connection_info.config
-        path: ${{ github.action_path }}/${{ github.sha }}-node_connection_info.config
+        path: ${{ github.action_path }}/${{ env.TESTNET_ID }}-node_connection_info.config
     - name: Destroy Testnet
       env:
         DO_PAT: ${{ inputs.do-token }}
