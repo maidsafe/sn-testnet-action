@@ -77,3 +77,7 @@ runs:
           terraform workspace select ${{ env.TESTNET_ID }} || terraform workspace new ${{ env.TESTNET_ID }}
           ${{ github.action_path }}/sn_testnet_tool/down.sh dummy-arg "-auto-approve"
         fi
+
+branding:
+  icon: 'globe'
+  color: 'blue'
