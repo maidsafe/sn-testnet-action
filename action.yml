@@ -36,7 +36,6 @@ runs:
       with:
         terraform_wrapper: false
     - name: Deploy Testnet
-      if: ${{ inputs.action }} == 'create'
       env:
         DO_PAT: ${{ inputs.do-token }}
         AWS_ACCESS_KEY_ID: ${{ inputs.aws-access-key-id }}
@@ -44,29 +43,31 @@ runs:
         AWS_DEFAULT_REGION: ${{ inputs.aws-default-region }}
       shell: bash
       run: |
-        git clone https://github.com/lionel1704/sn_testnet_tool ${{ github.action_path }}/sn_testnet_tool --depth 1
-        cd ${{ github.action_path }}/sn_testnet_tool
-        terraform init
-        terraform workspace select ${{ github.sha }} || terraform workspace new ${{ github.sha }}
-        echo "${{ inputs.ssh-secret-key }}" > ${{ github.action_path }}/id_rsa
-        chmod 600 ${{ github.action_path }}/id_rsa
-        eval `ssh-agent`
-        ssh-add ${{ github.action_path }}/id_rsa
-        ${{ github.action_path }}/sn_testnet_tool/up.sh ${{ github.action_path }}/id_rsa ${{ inputs.node-count }} ${{ inputs.node-path }} ${{ inputs.node-version }} "-auto-approve" \
-        || ${{ github.action_path }}/sn_testnet_tool/down.sh ${{ github.action_path }}/id_rsa
+        if [[ "${{inputs.action}}" == "create" ]]; then
+          git clone https://github.com/lionel1704/sn_testnet_tool ${{ github.action_path }}/sn_testnet_tool --depth 1
+          cd ${{ github.action_path }}/sn_testnet_tool
+          terraform init
+          terraform workspace select ${{ github.sha }} || terraform workspace new ${{ github.sha }}
+          echo "${{ inputs.ssh-secret-key }}" > ${{ github.action_path }}/id_rsa
+          chmod 600 ${{ github.action_path }}/id_rsa
+          eval `ssh-agent`
+          ssh-add ${{ github.action_path }}/id_rsa
+          ${{ github.action_path }}/sn_testnet_tool/up.sh ${{ github.action_path }}/id_rsa ${{ inputs.node-count }} ${{ inputs.node-path }} ${{ inputs.node-version }} "-auto-approve" \
+          || ${{ github.action_path }}/sn_testnet_tool/down.sh ${{ github.action_path }}/id_rsa
+        fi
     - uses: actions/upload-artifact@v2
-      if: ${{ inputs.action }} == 'create'
       with:
         name: node_connection_info.config
         path: ${{ github.action_path }}/${{ github.sha }}-node_connection_info.config
     - name: Destroy Testnet
-      if: ${{ inputs.action }} == 'destroy'
       env:
         DO_PAT: ${{ inputs.do-token }}
       shell: bash
       run: |
-        git clone https://github.com/lionel1704/sn_testnet_tool ${{ github.action_path }}/sn_testnet_tool --depth 1
-        cd ${{ github.action_path }}/sn_testnet_tool
-        terraform init
-        terraform workspace select ${{ github.sha }} || terraform workspace new ${{ github.sha }}
-        ${{ github.action_path }}/sn_testnet_tool/down.sh
+        if [[ "${{inputs.action}}" == "create" ]]; then
+          git clone https://github.com/lionel1704/sn_testnet_tool ${{ github.action_path }}/sn_testnet_tool --depth 1
+          cd ${{ github.action_path }}/sn_testnet_tool
+          terraform init
+          terraform workspace select ${{ github.sha }} || terraform workspace new ${{ github.sha }}
+          ${{ github.action_path }}/sn_testnet_tool/down.sh
+        fi
