@@ -1,4 +1,4 @@
-# SAFE Testnet action
+# SAFE Network Testnet action
 
 This action provides the following functionality:
 
@@ -11,7 +11,7 @@ This action can be used by including it as a step in a workflow.
 
 ```
 - name: Launch testnet
-  uses: lionel1704/safe-testnet-action@master
+  uses: maidsafe/sn_testnet_action@master
   with:
       do-token: ${{ secrets.DO_TOKEN }}
       aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
