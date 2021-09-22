@@ -1,4 +1,4 @@
-name: 'SAFE Testnet deployer'
+name: 'SAFE Network Testnet deployer'
 description: 'GitHub action to deploy a testnet using Digital Ocean droplets'
 inputs:
   do-token:
@@ -48,7 +48,7 @@ runs:
       shell: bash
       run: |
         if [[ "${{inputs.action}}" == "create" ]]; then
-          git clone https://github.com/lionel1704/sn_testnet_tool ${{ github.action_path }}/sn_testnet_tool --depth 1
+          git clone https://github.com/maidsafe/sn_testnet_tool ${{ github.action_path }}/sn_testnet_tool --depth 1
           cd ${{ github.action_path }}/sn_testnet_tool
           terraform init
           terraform workspace select ${{ env.TESTNET_ID }} || terraform workspace new ${{ env.TESTNET_ID }}
@@ -73,7 +73,7 @@ runs:
       shell: bash
       run: |
         if [[ "${{inputs.action}}" == "destroy" ]]; then
-          git clone https://github.com/lionel1704/sn_testnet_tool ${{ github.action_path }}/sn_testnet_tool --depth 1
+          git clone https://github.com/maidsafe/sn_testnet_tool ${{ github.action_path }}/sn_testnet_tool --depth 1
           cd ${{ github.action_path }}/sn_testnet_tool
           terraform init
           terraform workspace select ${{ env.TESTNET_ID }} || terraform workspace new ${{ env.TESTNET_ID }}
