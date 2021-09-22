@@ -57,7 +57,7 @@ runs:
           eval `ssh-agent`
           ssh-add ${{ github.action_path }}/id_rsa
           ${{ github.action_path }}/sn_testnet_tool/up.sh ${{ github.action_path }}/id_rsa ${{ inputs.node-count }} ${{ inputs.node-path }} ${{ inputs.node-version }} "-auto-approve" \
-          || ${{ github.action_path }}/sn_testnet_tool/down.sh ${{ github.action_path }}/id_rsa
+          || ${{ github.action_path }}/sn_testnet_tool/down.sh ${{ github.action_path }}/id_rsa "-auto-approve"
         fi
     - uses: actions/upload-artifact@v2
       with:
@@ -77,7 +77,7 @@ runs:
           cd ${{ github.action_path }}/sn_testnet_tool
           terraform init
           terraform workspace select ${{ env.TESTNET_ID }} || terraform workspace new ${{ env.TESTNET_ID }}
-          ${{ github.action_path }}/sn_testnet_tool/down.sh dummy-arg "-auto-approve"
+          ${{ github.action_path }}/sn_testnet_tool/down.sh ${{ github.action_path }}/id_rsa "-auto-approve"
         fi
 
 branding:
