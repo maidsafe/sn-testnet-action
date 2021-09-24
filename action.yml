@@ -25,6 +25,10 @@ inputs:
   node-version:
     description: 'Node version'
     default: "\"\""
+  build-node:
+    description: "Does the node binary need to be built? Accepts 'true' or 'false'"
+    required: false
+    default: false
   action:
     description: "Task to be carried out. Accepts 'create' or 'destroy'"
     default: 'create'
@@ -38,7 +42,7 @@ runs:
     - name: Set TESTNET_ID env
       shell: bash
       run: echo "TESTNET_ID=gha-testnet-$(echo $GITHUB_SHA | cut -c 1-7)" >> $GITHUB_ENV
-    - name: Deploy Testnet
+    - name: Build node and run testnet on Digital Ocean
       env:
         DO_PAT: ${{ inputs.do-token }}
         AWS_ACCESS_KEY_ID: ${{ inputs.aws-access-key-id }}
@@ -48,7 +52,7 @@ runs:
       shell: bash
       run: |
         if [[ "${{inputs.action}}" == "create" ]]; then
-          git clone https://github.com/maidsafe/sn_testnet_tool ${{ github.action_path }}/sn_testnet_tool --depth 1
+          git clone --single-branch --depth 1 https://github.com/maidsafe/sn_testnet_tool ${{ github.action_path }}/sn_testnet_tool
           cd ${{ github.action_path }}/sn_testnet_tool
           terraform init
           terraform workspace select ${{ env.TESTNET_ID }} || terraform workspace new ${{ env.TESTNET_ID }}
@@ -56,7 +60,12 @@ runs:
           chmod 600 ${{ github.action_path }}/id_rsa
           eval `ssh-agent`
           ssh-add ${{ github.action_path }}/id_rsa
-          ${{ github.action_path }}/sn_testnet_tool/up.sh ${{ github.action_path }}/id_rsa ${{ inputs.node-count }} ${{ inputs.node-path }} ${{ inputs.node-version }} "-auto-approve" \
+          NODE_PATH=${{ inputs.node_path }}
+          if [[ "${{inputs.build-node}}" == "true" ]]; then
+            ${{ github.action_path }}/sn_testnet_tool/build.sh ${{ github.action_path }}/id_rsa ${{ github.repository_owner }} ${{ github.sha }}
+            NODE_PATH=${{ github.action_path }}/sn_node
+          fi
+          ${{ github.action_path }}/sn_testnet_tool/up.sh ${{ github.action_path }}/id_rsa ${{ inputs.node-count }} $NODE_PATH ${{ inputs.node-version }} "-auto-approve" \
           || ${{ github.action_path }}/sn_testnet_tool/down.sh ${{ github.action_path }}/id_rsa "-auto-approve"
         fi
     - uses: actions/upload-artifact@v2
