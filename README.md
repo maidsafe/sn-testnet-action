@@ -35,9 +35,12 @@ We can also use a binary built during the workflow by passing the path to the `n
 |`node-count`|Number of nodes to be deployed|`false`|`50`|
 |`node-path`|Path to the node binary|`false`*||
 |`node-version`|Node version|`false`*||
+|`build-node`|Should the node binary be built? Accepts `true` or `false`|`false`*|`false`|
 |`action`|Task to be carried out. Accepts `create` or `destroy`|`false`|`create`|
 
-`*` - Either `node-path` or `node-version` should be provided. If both are supplied `node-version` takes precedence.
+
+`*` - Either `node-path` or `node-version` should be provided or `build-node` should be set to `true`. <br>
+If both `node-path` and `node-version` are supplied `node-version` takes precedence. `build-node` overrides both of them.
 
 # License
 
