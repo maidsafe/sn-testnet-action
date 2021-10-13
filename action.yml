@@ -41,7 +41,7 @@ runs:
         terraform_wrapper: false
     - name: Set TESTNET_ID env
       shell: bash
-      run: echo "TESTNET_ID=gha-testnet-$(echo $GITHUB_SHA | cut -c 1-7)" >> $GITHUB_ENV
+      run: echo "TESTNET_ID=gha-testnet-$(echo ${{ github.event.pull_request.head.sha || github.sha }} | cut -c 1-7)" >> $GITHUB_ENV
     - name: Build node and run testnet on Digital Ocean
       env:
         DO_PAT: ${{ inputs.do-token }}
@@ -62,7 +62,7 @@ runs:
           ssh-add ${{ github.action_path }}/id_rsa
           NODE_PATH=${{ inputs.node_path }}
           if [[ "${{inputs.build-node}}" == "true" ]]; then
-            ${{ github.action_path }}/sn_testnet_tool/build.sh ${{ github.action_path }}/id_rsa ${{ github.repository_owner }} ${{ github.sha }}
+            ${{ github.action_path }}/sn_testnet_tool/build.sh ${{ github.action_path }}/id_rsa ${{ github.repository_owner }} ${{ github.event.pull_request.head.sha || github.sha }}
             NODE_PATH=${{ github.action_path }}/sn_node
           fi
           ${{ github.action_path }}/sn_testnet_tool/up.sh ${{ github.action_path }}/id_rsa ${{ inputs.node-count }} $NODE_PATH ${{ inputs.node-version }} "-auto-approve" \
