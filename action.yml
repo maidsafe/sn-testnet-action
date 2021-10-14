@@ -62,7 +62,7 @@ runs:
           ssh-add ${{ github.action_path }}/id_rsa
           NODE_PATH=${{ inputs.node_path }}
           if [[ "${{inputs.build-node}}" == "true" ]]; then
-            ${{ github.action_path }}/sn_testnet_tool/build.sh ${{ github.action_path }}/id_rsa ${{ github.repository_owner }} ${{ github.event.pull_request.head.sha || github.sha }}
+            ${{ github.action_path }}/sn_testnet_tool/build.sh ${{ github.action_path }}/id_rsa ${{ github.event.pull_request.head.user.login || github.repository_owner }} ${{ github.event.pull_request.head.sha || github.sha }}
             NODE_PATH=${{ github.action_path }}/sn_node
           fi
           ${{ github.action_path }}/sn_testnet_tool/up.sh ${{ github.action_path }}/id_rsa ${{ inputs.node-count }} $NODE_PATH ${{ inputs.node-version }} "-auto-approve" \
