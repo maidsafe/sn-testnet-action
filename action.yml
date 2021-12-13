@@ -62,6 +62,7 @@ runs:
           ssh-add ${{ github.action_path }}/id_rsa
           NODE_PATH=${{ inputs.node_path }}
           if [[ "${{inputs.build-node}}" == "true" ]]; then
+            echo "Building node bins"
             ${{ github.action_path }}/sn_testnet_tool/build.sh ${{ github.action_path }}/id_rsa ${{ github.event.pull_request.head.user.login || github.repository_owner }} ${{ github.event.pull_request.head.sha || github.sha }}
             NODE_PATH=${{ github.action_path }}/sn_node
           fi
@@ -87,6 +88,8 @@ runs:
           terraform init
           terraform workspace select ${{ env.TESTNET_ID }} || terraform workspace new ${{ env.TESTNET_ID }}
           ${{ github.action_path }}/sn_testnet_tool/down.sh ${{ github.action_path }}/id_rsa "-auto-approve"
+          terraform workspace select alpha
+          terraform workspace delete ${{ env.TESTNET_ID }}
         fi
 
 branding:
