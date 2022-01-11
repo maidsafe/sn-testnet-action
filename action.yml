@@ -21,10 +21,8 @@ inputs:
     default: 50
   node-path:
     description: 'Path to the node binary'
-    default: "\"\""
   node-version:
     description: 'Node version'
-    default: "\"\""
   build-node:
     description: "Does the node binary need to be built? Accepts 'true' or 'false'"
     required: false
