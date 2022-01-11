@@ -43,37 +43,43 @@ runs:
       shell: bash
       run: echo "TESTNET_ID=gha-testnet-$(echo ${{ github.event.pull_request.head.sha || github.sha }} | cut -c 1-7)" >> $GITHUB_ENV
     - name: Build node and run testnet on Digital Ocean
+      if: inputs.action == 'create'
       env:
         DO_PAT: ${{ inputs.do-token }}
         AWS_ACCESS_KEY_ID: ${{ inputs.aws-access-key-id }}
         AWS_SECRET_ACCESS_KEY: ${{ inputs.aws-access-key-secret }}
         AWS_DEFAULT_REGION: ${{ inputs.aws-default-region }}
+        NODE_COUNT: ${{ inputs.node-count }}
+        NODE_PATH: ${{ inputs.node-path }}
+        NODE_VERSION: ${{ inputs.node-version }}
         WORKING_DIR: ${{ github.action_path }}
       shell: bash
       run: |
-        if [[ "${{inputs.action}}" == "create" ]]; then
-          git clone --single-branch --depth 1 https://github.com/maidsafe/sn_testnet_tool ${{ github.action_path }}/sn_testnet_tool
-          cd ${{ github.action_path }}/sn_testnet_tool
-          terraform init
-          terraform workspace select ${{ env.TESTNET_ID }} || terraform workspace new ${{ env.TESTNET_ID }}
-          echo "${{ inputs.ssh-secret-key }}" > ${{ github.action_path }}/id_rsa
-          chmod 600 ${{ github.action_path }}/id_rsa
-          eval `ssh-agent`
-          ssh-add ${{ github.action_path }}/id_rsa
-          NODE_PATH=${{ inputs.node_path }}
-          if [[ "${{inputs.build-node}}" == "true" ]]; then
-            echo "Building node bins"
-            ${{ github.action_path }}/sn_testnet_tool/build.sh ${{ github.action_path }}/id_rsa ${{ github.event.pull_request.head.user.login || github.repository_owner }} ${{ github.event.pull_request.head.sha || github.sha }}
-            NODE_PATH=${{ github.action_path }}/sn_node
-          fi
-          ${{ github.action_path }}/sn_testnet_tool/up.sh ${{ github.action_path }}/id_rsa ${{ inputs.node-count }} $NODE_PATH ${{ inputs.node-version }} "-auto-approve" \
-          || ${{ github.action_path }}/sn_testnet_tool/down.sh ${{ github.action_path }}/id_rsa "-auto-approve"
+        repo_owner=${{ github.event.pull_request.head.user.login || github.repository_owner }}
+        commit_hash=${{ github.event.pull_request.head.sha || github.sha }}
+        git clone --single-branch --depth 1 \
+          https://github.com/maidsafe/sn_testnet_tool $WORKING_DIR/sn_testnet_tool
+        cd $WORKING_DIR/sn_testnet_tool
+        terraform init
+        terraform workspace select ${{ env.TESTNET_ID }} || terraform workspace new ${{ env.TESTNET_ID }}
+        echo "${{ inputs.ssh-secret-key }}" > $WORKING_DIR/id_rsa
+        chmod 600 $WORKING_DIR/id_rsa
+        eval `ssh-agent`
+        ssh-add $WORKING_DIR/id_rsa
+        if [[ "${{inputs.build-node}}" == "true" ]]; then
+          echo "Building node bins"
+          $WORKING_DIR/sn_testnet_tool/build.sh $WORKING_DIR/id_rsa $repo_owner $commit_hash
+          NODE_PATH=$WORKING_DIR/sn_node
         fi
+        $WORKING_DIR/sn_testnet_tool/up.sh \
+          $WORKING_DIR/id_rsa "$NODE_COUNT" "$NODE_PATH" "$NODE_VERSION" "-auto-approve" \
+          || $WORKING_DIR/sn_testnet_tool/down.sh $WORKING_DIR/id_rsa "-auto-approve"
     - uses: actions/upload-artifact@v2
       with:
         name: node_connection_info.config
         path: ${{ github.action_path }}/${{ env.TESTNET_ID }}-node_connection_info.config
     - name: Destroy Testnet
+      if: inputs.action == 'destroy'
       env:
         DO_PAT: ${{ inputs.do-token }}
         AWS_ACCESS_KEY_ID: ${{ inputs.aws-access-key-id }}
@@ -82,15 +88,13 @@ runs:
         WORKING_DIR: ${{ github.action_path }}
       shell: bash
       run: |
-        if [[ "${{inputs.action}}" == "destroy" ]]; then
-          git clone https://github.com/maidsafe/sn_testnet_tool ${{ github.action_path }}/sn_testnet_tool --depth 1
-          cd ${{ github.action_path }}/sn_testnet_tool
-          terraform init
-          terraform workspace select ${{ env.TESTNET_ID }} || terraform workspace new ${{ env.TESTNET_ID }}
-          ${{ github.action_path }}/sn_testnet_tool/down.sh ${{ github.action_path }}/id_rsa "-auto-approve"
-          terraform workspace select alpha
-          terraform workspace delete ${{ env.TESTNET_ID }}
-        fi
+        git clone https://github.com/maidsafe/sn_testnet_tool $WORKING_DIR/sn_testnet_tool --depth 1
+        cd $WORKING_DIR/sn_testnet_tool
+        terraform init
+        terraform workspace select ${{ env.TESTNET_ID }} || terraform workspace new ${{ env.TESTNET_ID }}
+        $WORKING_DIR/sn_testnet_tool/down.sh $WORKING_DIR/id_rsa "-auto-approve"
+        terraform workspace select alpha
+        terraform workspace delete ${{ env.TESTNET_ID }}
 
 branding:
   icon: 'globe'
