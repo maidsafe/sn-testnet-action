@@ -70,8 +70,7 @@ runs:
           NODE_PATH=$WORKING_DIR/sn_node
         fi
         $WORKING_DIR/sn_testnet_tool/up.sh \
-          $WORKING_DIR/id_rsa "$NODE_COUNT" "$NODE_PATH" "$NODE_VERSION" "-auto-approve" \
-          || $WORKING_DIR/sn_testnet_tool/down.sh $WORKING_DIR/id_rsa "-auto-approve"
+          $WORKING_DIR/id_rsa "$NODE_COUNT" "$NODE_PATH" "$NODE_VERSION" "-auto-approve"
     - uses: actions/upload-artifact@v2
       with:
         name: node_connection_info.config
