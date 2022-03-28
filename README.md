@@ -23,6 +23,35 @@ This action can be used by including it as a step in a workflow.
 
 We can also use a binary built during the workflow by passing the path to the `node-path` input.
 
+You can ensure your testnet is always cleaned up in a workflow run by adding a job like this:
+```
+kill-if-fail:
+  name: kill testnet on fail
+  runs-on: ubuntu-latest
+  if: |
+    always() &&
+    (needs.launch-testnet.result=='failure' ||
+     needs.client.result=='failure' ||
+     needs.api.result=='failure' ||
+     needs.cli.result=='failure')
+  needs: [launch-testnet, client, api, cli]
+  steps:
+    - name: Kill testnet
+      uses: maidsafe/sn_testnet_action@master
+      with:
+        do-token: ${{ secrets.DO_TOKEN }}
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-access-key-secret: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        action: 'destroy'
+    - name: Upload event file
+      uses: actions/upload-artifact@v2
+      with:
+        name: event-file
+        path: ${{ github.event_path }}
+```
+
+Obviously, you need to substitute the job names here with your own.
+
 # Inputs
 
 |Input|Description|Required|Default|
