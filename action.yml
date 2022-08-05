@@ -105,6 +105,9 @@ runs:
         terraform init
         terraform workspace select ${{ env.TESTNET_ID }} || terraform workspace new ${{ env.TESTNET_ID }}
         $WORKING_DIR/sn_testnet_tool/down.sh $WORKING_DIR/id_rsa "-auto-approve"
+        # It's necessary to change workspace here because deletion of the currently active workspace
+        # is not permitted.
+        terraform workspace select alpha
         terraform workspace delete ${{ env.TESTNET_ID }}
 
 branding:
