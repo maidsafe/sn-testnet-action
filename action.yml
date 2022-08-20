@@ -74,10 +74,6 @@ runs:
         # The 0 value is to disable the client node, which doesn't apply in this context.
         ./up.sh \
           $WORKING_DIR/id_rsa "$NODE_COUNT" "$NODE_PATH" "$NODE_VERSION" "0" "-auto-approve"
-    - uses: actions/upload-artifact@v2
-      with:
-        name: node_connection_info.config
-        path: ${{ github.action_path }}/${{ env.TESTNET_ID }}-node_connection_info.config
     - name: Destroy Testnet
       if: inputs.action == 'destroy'
       env:
