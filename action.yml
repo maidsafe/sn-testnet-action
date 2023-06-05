@@ -1,4 +1,4 @@
-name: "SAFE Network Testnet deployer"
+name: "SAFE Network Tesnet Workflow Action"
 description: "GitHub action to deploy a testnet using Digital Ocean droplets"
 inputs:
   action:
@@ -13,36 +13,32 @@ inputs:
   aws-default-region:
     description: "AWS Default region"
     default: eu-west-2
-  build-node:
-    description: "Does the node binary need to be built? Accepts 'true' or 'false'"
-    required: false
-    default: false
   do-token:
     description: "Digital Ocean Authorization token"
+    required: true
+  name:
+    description: "The name of the testnet"
     required: true
   node-count:
     description: "Number of nodes to be deployed"
     default: 50
-  node-path:
-    description: "Path to the node binary"
-  node-version:
-    description: "Node version"
+  provider:
+    description: "The cloud provider. Valid values are 'aws' or 'digital-ocean'."
+    default: "digital-ocean"
+    required: true
   ssh-secret-key:
     description: "SSH key used to run the nodes on the Digital Ocean droplets"
-    required: true
-  testnet-id:
-    description: "The ID for the testnet (which will be the name of the Terraform workspace)"
     required: true
   testnet-tool-repo-branch:
     description: >
       The branch for the testnet tool repository. This is to enable using forks to test changes to
-      the testnet tool. Will default to the `main` branch.
-    default: main
+      the testnet tool. Will default to the `digital-ocean-refactor` branch.
+    default: digital-ocean-refactor
   testnet-tool-repo-user:
     description: >
       The user or organisation for the testnet tool repository. This is to enable using forks to
-      test changes to the testnet tool. Will default to the `maidsafe` organisation.
-    default: maidsafe
+      test changes to the testnet tool. Will default to the `jacderida`.
+    default: jacderida
 
 runs:
   using: "composite"
@@ -58,35 +54,13 @@ runs:
         AWS_SECRET_ACCESS_KEY: ${{ inputs.aws-access-key-secret }}
         AWS_DEFAULT_REGION: ${{ inputs.aws-default-region }}
         NODE_COUNT: ${{ inputs.node-count }}
-        NODE_PATH: ${{ inputs.node-path }}
-        NODE_VERSION: ${{ inputs.node-version }}
-        TESTNET_ID: ${{ inputs.testnet-id }}
         TESTNET_TOOL_BRANCH: ${{ inputs.testnet-tool-repo-branch }}
         TESTNET_TOOL_USER: ${{ inputs.testnet-tool-repo-user }}
         WORKING_DIR: ${{ github.action_path }}
       shell: bash
       run: |
-        repo_owner=${{ github.event.pull_request.head.user.login || github.repository_owner }}
-        commit_hash=${{ github.event.pull_request.head.sha || github.sha }}
         git clone --single-branch --depth 1 --branch $TESTNET_TOOL_BRANCH \
-          https://github.com/$TESTNET_TOOL_USER/sn_testnet_tool $WORKING_DIR/sn_testnet_tool
-        cd $WORKING_DIR/sn_testnet_tool
-        workspace_name="$TESTNET_ID"
-        terraform init
-        terraform workspace select $workspace_name || terraform workspace new $workspace_name
-        echo "${{ inputs.ssh-secret-key }}" > $WORKING_DIR/id_rsa
-        chmod 600 $WORKING_DIR/id_rsa
-        eval `ssh-agent`
-        ssh-add $WORKING_DIR/id_rsa
-        if [[ "${{inputs.build-node}}" == "true" ]]; then
-          echo "Building node bins"
-          $WORKING_DIR/sn_testnet_tool/build.sh $WORKING_DIR/id_rsa $repo_owner $commit_hash
-          NODE_PATH=$WORKING_DIR/sn_node
-        fi
-        mkdir -p workspace/$TESTNET_ID
-        # The 0 value is to disable the client node, which doesn't apply in this context.
-        ./up.sh \
-          $WORKING_DIR/id_rsa "$NODE_COUNT" "$NODE_PATH" "$NODE_VERSION" "0" "-auto-approve"
+          https://github.com/$TESTNET_TOOL_USER/sn_testnet_tool
     - name: Destroy Testnet
       if: inputs.action == 'destroy'
       env:
