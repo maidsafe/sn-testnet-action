@@ -12,7 +12,6 @@ inputs:
     required: true
   aws-default-region:
     description: "AWS Default region"
-    default: eu-west-2
   do-token:
     description: "Digital Ocean Authorization token"
     required: true
@@ -21,24 +20,32 @@ inputs:
     required: true
   node-count:
     description: "Number of nodes to be deployed"
-    default: 50
   provider:
     description: "The cloud provider. Valid values are 'aws' or 'digital-ocean'."
-    default: "digital-ocean"
     required: true
   ssh-secret-key:
     description: "SSH key used to run the nodes on the Digital Ocean droplets"
     required: true
+  ansible-vault-password:
+    description: Password for Ansible vault.
+    required: true
+  testnet-name:
+    description: >
+      The name of the testnet.
   testnet-tool-repo-branch:
     description: >
       The branch for the testnet tool repository. This is to enable using forks to test changes to
       the testnet tool. Will default to the `digital-ocean-refactor` branch.
-    default: digital-ocean-refactor
   testnet-tool-repo-user:
     description: >
       The user or organisation for the testnet tool repository. This is to enable using forks to
       test changes to the testnet tool. Will default to the `jacderida`.
-    default: jacderida
+  subnet-id:
+    description: >
+      The testnet dev subnet id for AWS.
+  security-group-id:
+    description: >
+      The testnet dev security group id for AWS.
 
 runs:
   using: "composite"
@@ -46,41 +53,139 @@ runs:
     - uses: hashicorp/setup-terraform@v1
       with:
         terraform_wrapper: false
-    - name: Build node and run testnet on Digital Ocean
+    - name: install tools
+      env:
+        JUST_BIN_URL: https://github.com/casey/just/releases/download/1.13.0/just-1.13.0-x86_64-unknown-linux-musl.tar.gz
+      shell: bash
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y bsdmainutils curl jq less unzip
+        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+        unzip awscliv2.zip
+        sudo ./aws/install --update
+        rm -rf aws awscliv2.zip
+        TERRAFORM_VERSION=$(curl -s https://checkpoint-api.hashicorp.com/v1/check/terraform | \
+          jq -r .current_version)
+        curl https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip \
+          -o terraform.zip
+        unzip terraform.zip
+        mv terraform /usr/local/bin
+        rm terraform.zip
+
+        pip install --user ansible boto3
+
+        curl -L -O $JUST_BIN_URL
+        mkdir just
+        tar xvf just-1.13.0-x86_64-unknown-linux-musl.tar.gz -C just
+        rm just-1.13.0-x86_64-unknown-linux-musl.tar.gz
+        sudo mv just/just /usr/local/bin
+        rm -rf just
+
+    - name: Build node and run testnet on Digital Ocean or AWS
       if: inputs.action == 'create'
       env:
         DO_PAT: ${{ inputs.do-token }}
         AWS_ACCESS_KEY_ID: ${{ inputs.aws-access-key-id }}
         AWS_SECRET_ACCESS_KEY: ${{ inputs.aws-access-key-secret }}
         AWS_DEFAULT_REGION: ${{ inputs.aws-default-region }}
+        SSH_KEY_NAME: id_rsa
         NODE_COUNT: ${{ inputs.node-count }}
+        PROVIDER: ${{ inputs.provider }}
+        TESTNET_NAME: ${{ inputs.testnet-name }}
         TESTNET_TOOL_BRANCH: ${{ inputs.testnet-tool-repo-branch }}
         TESTNET_TOOL_USER: ${{ inputs.testnet-tool-repo-user }}
-        WORKING_DIR: ${{ github.action_path }}
+        SN_TESTNET_DEV_SUBNET_ID: ${{ inputs.subnet-id }}
+        SN_TESTNET_DEV_SECURITY_GROUP_ID: ${{ inputs.security-group-id }}
+        TERRAFORM_STATE_BUCKET_NAME: maidsafe-org-infra-tfstate
       shell: bash
       run: |
-        git clone --single-branch --depth 1 --branch $TESTNET_TOOL_BRANCH \
-          https://github.com/$TESTNET_TOOL_USER/sn_testnet_tool
-    - name: Destroy Testnet
+        set -e
+        mkdir ~/.ssh
+        echo "${{ inputs.ssh-secret-key }}" >> ~/.ssh/id_rsa
+        chmod 0400 ~/.ssh/id_rsa
+        ssh-keygen -y -f ~/.ssh/id_rsa > ~/.ssh/id_rsa.pub
+
+        mkdir ~/.ansible
+        echo "${{ inputs.ansible-vault-password }}" >> ~/.ansible/vault-password
+
+        git clone --quiet --single-branch --depth 1 \
+          --branch $TESTNET_TOOL_BRANCH https://github.com/$TESTNET_TOOL_USER/sn_testnet_tool
+
+        cd sn_testnet_tool
+
+        export PATH=$PATH:/home/runner/.local/bin
+        echo "DIGITALOCEAN_TOKEN=${{ env.DO_PAT }}" >> .env
+        echo "DO_API_TOKEN=${{ env.DO_PAT }}" >> .env
+        echo "AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}" >> .env
+        echo "AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY }}" >> .env
+        echo "AWS_DEFAULT_REGION=${{ env.AWS_DEFAULT_REGION }}" >> .env
+        echo "DO_PAT=${{ env.DO_PAT }}" >> .env
+        echo "SSH_KEY_NAME=${{ env.SSH_KEY_NAME }}" >> .env
+        echo "NODE_COUNT=${{ env.NODE_COUNT }}" >> .env
+        echo "PATH=$PATH:/home/runner/.local/bin" >> .env
+        echo "PROVIDER=${{ env.PROVIDER }}" >> .env
+        echo "TESTNET_NAME=${{ env.TESTNET_NAME }}" >> .env
+        echo "TESTNET_TOOL_BRANCH=${{ env.TESTNET_TOOL_BRANCH }}" >> .env
+        echo "TESTNET_TOOL_USER=${{ env.TESTNET_TOOL_USER }}" >> .env
+        echo "SN_TESTNET_DEV_SUBNET_ID=${{ env.SN_TESTNET_DEV_SUBNET_ID}} " >> .env
+        echo "SN_TESTNET_DEV_SECURITY_GROUP_ID=${{ env.SN_TESTNET_DEV_SECURITY_GROUP_ID }}" >> .env
+        echo "TERRAFORM_STATE_BUCKET_NAME=${{ env.TERRAFORM_STATE_BUCKET_NAME }}" >> .env
+
+        just init "$TESTNET_NAME" "$PROVIDER"
+        just testnet "$TESTNET_NAME" "$PROVIDER" $NODE_COUNT
+
+    - name: Destroy testnet on Digital Ocean or AWS
       if: inputs.action == 'destroy'
       env:
         DO_PAT: ${{ inputs.do-token }}
         AWS_ACCESS_KEY_ID: ${{ inputs.aws-access-key-id }}
         AWS_SECRET_ACCESS_KEY: ${{ inputs.aws-access-key-secret }}
         AWS_DEFAULT_REGION: ${{ inputs.aws-default-region }}
-        TESTNET_ID: ${{ inputs.testnet-id }}
-        WORKING_DIR: ${{ github.action_path }}
+        SSH_KEY_NAME: id_rsa
+        NODE_COUNT: ${{ inputs.node-count }}
+        PROVIDER: ${{ inputs.provider }}
+        TESTNET_NAME: ${{ inputs.testnet-name }}
+        TESTNET_TOOL_BRANCH: ${{ inputs.testnet-tool-repo-branch }}
+        TESTNET_TOOL_USER: ${{ inputs.testnet-tool-repo-user }}
+        SN_TESTNET_DEV_SUBNET_ID: ${{ inputs.subnet-id }}
+        SN_TESTNET_DEV_SECURITY_GROUP_ID: ${{ inputs.security-group-id }}
+        TERRAFORM_STATE_BUCKET_NAME: maidsafe-org-infra-tfstate
       shell: bash
       run: |
-        git clone https://github.com/maidsafe/sn_testnet_tool $WORKING_DIR/sn_testnet_tool --depth 1
-        cd $WORKING_DIR/sn_testnet_tool
-        terraform init
-        terraform workspace select $TESTNET_ID || terraform workspace new $TESTNET_ID
-        $WORKING_DIR/sn_testnet_tool/down.sh $WORKING_DIR/id_rsa "-auto-approve"
-        # It's necessary to change workspace here because deletion of the currently active workspace
-        # is not permitted.
-        terraform workspace select alpha
-        terraform workspace delete $TESTNET_ID
+        set -e
+        mkdir ~/.ssh
+        echo "${{ inputs.ssh-secret-key }}" >> ~/.ssh/id_rsa
+        chmod 0400 ~/.ssh/id_rsa
+        ssh-keygen -y -f ~/.ssh/id_rsa > ~/.ssh/id_rsa.pub
+
+        mkdir ~/.ansible
+        echo "${{ inputs.ansible-vault-password }}" >> ~/.ansible/vault-password
+
+        git clone --quiet --single-branch --depth 1 \
+          --branch $TESTNET_TOOL_BRANCH https://github.com/$TESTNET_TOOL_USER/sn_testnet_tool
+
+        cd sn_testnet_tool
+
+        export PATH=$PATH:/home/runner/.local/bin
+        echo "DIGITALOCEAN_TOKEN=${{ env.DO_PAT }}" >> .env
+        echo "DO_API_TOKEN=${{ env.DO_PAT }}" >> .env
+        echo "AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}" >> .env
+        echo "AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY }}" >> .env
+        echo "AWS_DEFAULT_REGION=${{ env.AWS_DEFAULT_REGION }}" >> .env
+        echo "DO_PAT=${{ env.DO_PAT }}" >> .env
+        echo "SSH_KEY_NAME=${{ env.SSH_KEY_NAME }}" >> .env
+        echo "NODE_COUNT=${{ env.NODE_COUNT }}" >> .env
+        echo "PATH=$PATH:/home/runner/.local/bin" >> .env
+        echo "PROVIDER=${{ env.PROVIDER }}" >> .env
+        echo "TESTNET_NAME=${{ env.TESTNET_NAME }}" >> .env
+        echo "TESTNET_TOOL_BRANCH=${{ env.TESTNET_TOOL_BRANCH }}" >> .env
+        echo "TESTNET_TOOL_USER=${{ env.TESTNET_TOOL_USER }}" >> .env
+        echo "SN_TESTNET_DEV_SUBNET_ID=${{ env.SN_TESTNET_DEV_SUBNET_ID}} " >> .env
+        echo "SN_TESTNET_DEV_SECURITY_GROUP_ID=${{ env.SN_TESTNET_DEV_SECURITY_GROUP_ID }}" >> .env
+        echo "TERRAFORM_STATE_BUCKET_NAME=${{ env.TERRAFORM_STATE_BUCKET_NAME }}" >> .env
+
+        just init "$TESTNET_NAME" "$PROVIDER"
+        just clean "$TESTNET_NAME" "$PROVIDER"
 
 branding:
   icon: "globe"
