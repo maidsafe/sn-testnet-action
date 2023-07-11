@@ -18,6 +18,21 @@ inputs:
   name:
     description: "The name of the testnet"
     required: true
+  use-custom-bin:
+    description: >
+      "Option to use a custom binary instead of the node binary derived from the Main Maidsafe repository.
+      Will default to 'false'."
+    required: true
+  org:
+    description: >
+      "The user or organisation for the testnet repository. This is to enable using forks of the 
+      Maidsafe repository. Will default to `Maidsafe`."
+    required: true
+  branch:
+    description: >
+      "The branch for the testnet repository. This is to enable using forked branches of the
+      Maidsafe repository. Will default to the `Main` branch."
+    required: true
   node-count:
     description: "Number of nodes to be deployed"
   provider:
@@ -39,7 +54,7 @@ inputs:
   testnet-tool-repo-user:
     description: >
       The user or organisation for the testnet tool repository. This is to enable using forks to
-      test changes to the testnet tool. Will default to the `jacderida`.
+      test changes to the testnet tool. Will default to `jacderida`.
   subnet-id:
     description: >
       The testnet dev subnet id for AWS.
@@ -92,6 +107,9 @@ runs:
         NODE_COUNT: ${{ inputs.node-count }}
         PROVIDER: ${{ inputs.provider }}
         TESTNET_NAME: ${{ inputs.testnet-name }}
+        USE_CUSTOM_BRANCH: ${{ inputs.use-custom-bin }}
+        TESTNET_ORG: ${{ inputs.testnet-org }}
+        TESTNET_BRANCH: ${{ inputs.testnet-branch }}
         TESTNET_TOOL_BRANCH: ${{ inputs.testnet-tool-repo-branch }}
         TESTNET_TOOL_USER: ${{ inputs.testnet-tool-repo-user }}
         SN_TESTNET_DEV_SUBNET_ID: ${{ inputs.subnet-id }}
@@ -125,6 +143,9 @@ runs:
         echo "PATH=$PATH:/home/runner/.local/bin" >> .env
         echo "PROVIDER=${{ env.PROVIDER }}" >> .env
         echo "TESTNET_NAME=${{ env.TESTNET_NAME }}" >> .env
+        echo "USE_CUSTOM_BIN=${{ env.USE_CUSTOM_BIN }}" >> .env
+        echo "TESTNET_ORG=${{ env.TESTNET_ORG }}" >> .env
+        echo "TESTNET_BRANCH=${{ env.TESTNET_BRANCH }}" >> .env
         echo "TESTNET_TOOL_BRANCH=${{ env.TESTNET_TOOL_BRANCH }}" >> .env
         echo "TESTNET_TOOL_USER=${{ env.TESTNET_TOOL_USER }}" >> .env
         echo "SN_TESTNET_DEV_SUBNET_ID=${{ env.SN_TESTNET_DEV_SUBNET_ID}} " >> .env
@@ -132,7 +153,7 @@ runs:
         echo "TERRAFORM_STATE_BUCKET_NAME=${{ env.TERRAFORM_STATE_BUCKET_NAME }}" >> .env
 
         just init "$TESTNET_NAME" "$PROVIDER"
-        just testnet "$TESTNET_NAME" "$PROVIDER" $NODE_COUNT
+        just testnet "$TESTNET_NAME" "$PROVIDER" $NODE_COUNT $USE_CUSTOM_BIN $TESTNET_ORG $TESTNET_BRANCH
 
     - name: Destroy testnet on Digital Ocean or AWS
       if: inputs.action == 'destroy'
@@ -145,6 +166,9 @@ runs:
         NODE_COUNT: ${{ inputs.node-count }}
         PROVIDER: ${{ inputs.provider }}
         TESTNET_NAME: ${{ inputs.testnet-name }}
+        USE_CUSTOM_BRANCH: ${{ inputs.use-custom-bin }}
+        TESTNET_ORG: ${{ inputs.testnet-org }}
+        TESTNET_BRANCH: ${{ inputs.testnet-branch }}
         TESTNET_TOOL_BRANCH: ${{ inputs.testnet-tool-repo-branch }}
         TESTNET_TOOL_USER: ${{ inputs.testnet-tool-repo-user }}
         SN_TESTNET_DEV_SUBNET_ID: ${{ inputs.subnet-id }}
@@ -178,6 +202,9 @@ runs:
         echo "PATH=$PATH:/home/runner/.local/bin" >> .env
         echo "PROVIDER=${{ env.PROVIDER }}" >> .env
         echo "TESTNET_NAME=${{ env.TESTNET_NAME }}" >> .env
+        echo "USE_CUSTOM_BIN=${{ env.USE_CUSTOM_BIN }}" >> .env
+        echo "TESTNET_ORG=${{ env.TESTNET_ORG }}" >> .env
+        echo "TESTNET_BRANCH=${{ env.TESTNET_BRANCH }}" >> .env
         echo "TESTNET_TOOL_BRANCH=${{ env.TESTNET_TOOL_BRANCH }}" >> .env
         echo "TESTNET_TOOL_USER=${{ env.TESTNET_TOOL_USER }}" >> .env
         echo "SN_TESTNET_DEV_SUBNET_ID=${{ env.SN_TESTNET_DEV_SUBNET_ID}} " >> .env
