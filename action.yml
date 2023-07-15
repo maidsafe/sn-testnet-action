@@ -70,16 +70,9 @@ runs:
         sudo apt-get update -y
         sudo apt-get install -y bsdmainutils curl jq less unzip
         curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-        unzip awscliv2.zip
+        unzip awscliv2.zip >/dev/null 2>&1  # Suppress output: it generates lots of noise in the logs.
         sudo ./aws/install --update
         rm -rf aws awscliv2.zip
-        TERRAFORM_VERSION=$(curl -s https://checkpoint-api.hashicorp.com/v1/check/terraform | \
-          jq -r .current_version)
-        curl https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip \
-          -o terraform.zip
-        unzip terraform.zip
-        mv terraform /usr/local/bin
-        rm terraform.zip
 
         pip install --user ansible boto3
 
@@ -99,15 +92,15 @@ runs:
         AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
         CUSTOM_BIN_ORG_NAME: ${{ inputs.custom-node-bin-org-name }}
         CUSTOM_BIN_BRANCH_NAME: ${{ inputs.custom-node-bin-branch-name }}
-        SSH_KEY_NAME: id_rsa
         NODE_COUNT: ${{ inputs.node-count }}
         NODE_INSTANCE_COUNT: ${{ inputs.node-instance-count }}
         PROVIDER: ${{ inputs.provider }}
+        SN_TESTNET_DEV_SUBNET_ID: ${{ inputs.subnet-id }}
+        SN_TESTNET_DEV_SECURITY_GROUP_ID: ${{ inputs.security-group-id }}
+        SSH_KEY_NAME: id_rsa
         TESTNET_NAME: ${{ inputs.testnet-name }}
         TESTNET_TOOL_BRANCH: ${{ inputs.testnet-tool-repo-branch }}
         TESTNET_TOOL_USER: ${{ inputs.testnet-tool-repo-user }}
-        SN_TESTNET_DEV_SUBNET_ID: ${{ inputs.subnet-id }}
-        SN_TESTNET_DEV_SECURITY_GROUP_ID: ${{ inputs.security-group-id }}
         TERRAFORM_STATE_BUCKET_NAME: maidsafe-org-infra-tfstate
       shell: bash
       run: |
@@ -144,7 +137,7 @@ runs:
         echo "TERRAFORM_STATE_BUCKET_NAME=${{ env.TERRAFORM_STATE_BUCKET_NAME }}" >> .env
 
         use_custom_bin="false"
-        if [[ ! -z "${{ inputs.custom-node-bin-org }}" ]]; then
+        if [[ ! -z "${{ inputs.custom-node-bin-org-name }}" ]]; then
           use_custom_bin="true"
         fi
         just init "$TESTNET_NAME" "$PROVIDER"
@@ -164,15 +157,15 @@ runs:
         AWS_ACCESS_KEY_ID: ${{ inputs.aws-access-key-id }}
         AWS_SECRET_ACCESS_KEY: ${{ inputs.aws-access-key-secret }}
         AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
-        SSH_KEY_NAME: id_rsa
         NODE_COUNT: ${{ inputs.node-count }}
         PROVIDER: ${{ inputs.provider }}
+        SN_TESTNET_DEV_SUBNET_ID: ${{ inputs.subnet-id }}
+        SN_TESTNET_DEV_SECURITY_GROUP_ID: ${{ inputs.security-group-id }}
+        SSH_KEY_NAME: id_rsa
+        TERRAFORM_STATE_BUCKET_NAME: maidsafe-org-infra-tfstate
         TESTNET_NAME: ${{ inputs.testnet-name }}
         TESTNET_TOOL_BRANCH: ${{ inputs.testnet-tool-repo-branch }}
         TESTNET_TOOL_USER: ${{ inputs.testnet-tool-repo-user }}
-        SN_TESTNET_DEV_SUBNET_ID: ${{ inputs.subnet-id }}
-        SN_TESTNET_DEV_SECURITY_GROUP_ID: ${{ inputs.security-group-id }}
-        TERRAFORM_STATE_BUCKET_NAME: maidsafe-org-infra-tfstate
       shell: bash
       run: |
         set -e
