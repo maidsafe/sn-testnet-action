@@ -1,51 +1,52 @@
-name: "SAFE Network Tesnet Workflow Action"
-description: "GitHub action to deploy a testnet using Digital Ocean droplets"
+name: "SAFE Network Testnet Workflow Action"
+description: "GitHub action to use the sn_testnet_tool repository to deploy a testnet"
 inputs:
   action:
-    description: "Task to be carried out. Accepts 'create' or 'destroy'"
+    description: "Task to be carried out. Accepts 'create' or 'destroy'."
     default: "create"
+  ansible-vault-password:
+    description: Password for Ansible vault.
+    required: true
   aws-access-key-id:
-    description: "AWS Access Key ID"
-    required: true
+    description: "AWS access key ID"
   aws-access-key-secret:
-    description: "AWS Access Key"
-    required: true
-  aws-default-region:
-    description: "AWS Default region"
+    description: "AWS access key"
+  aws-region:
+    description: "AWS region"
   do-token:
     description: "Digital Ocean Authorization token"
-    required: true
   name:
     description: "The name of the testnet"
     required: true
   node-count:
-    description: "Number of nodes to be deployed"
+    description: "Number of node VMs to be deployed"
+    required: true
+  node-instance-count:
+    description: "Number of nodes service instances to be started"
+    required: true
   provider:
     description: "The cloud provider. Valid values are 'aws' or 'digital-ocean'."
     required: true
   ssh-secret-key:
     description: "SSH key used to run the nodes on the Digital Ocean droplets"
     required: true
-  ansible-vault-password:
-    description: Password for Ansible vault.
-    required: true
+  subnet-id:
+    description: If running on AWS, this is the subnet of the VPC on which the VMs will be created.
+  security-group-id:
+    description: If running on AWS, this is the ID of the security groups the VMs will use.
   testnet-name:
-    description: >
-      The name of the testnet.
+    description: The name of the testnet.
+    required: true
   testnet-tool-repo-branch:
     description: >
       The branch for the testnet tool repository. This is to enable using forks to test changes to
       the testnet tool. Will default to the `digital-ocean-refactor` branch.
+    default: "main"
   testnet-tool-repo-user:
     description: >
       The user or organisation for the testnet tool repository. This is to enable using forks to
       test changes to the testnet tool. Will default to the `jacderida`.
-  subnet-id:
-    description: >
-      The testnet dev subnet id for AWS.
-  security-group-id:
-    description: >
-      The testnet dev security group id for AWS.
+    default: "maidsafe"
 
 runs:
   using: "composite"
@@ -87,9 +88,10 @@ runs:
         DO_PAT: ${{ inputs.do-token }}
         AWS_ACCESS_KEY_ID: ${{ inputs.aws-access-key-id }}
         AWS_SECRET_ACCESS_KEY: ${{ inputs.aws-access-key-secret }}
-        AWS_DEFAULT_REGION: ${{ inputs.aws-default-region }}
+        AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
         SSH_KEY_NAME: id_rsa
         NODE_COUNT: ${{ inputs.node-count }}
+        NODE_INSTANCE_COUNT: ${{ inputs.node-instance-count }}
         PROVIDER: ${{ inputs.provider }}
         TESTNET_NAME: ${{ inputs.testnet-name }}
         TESTNET_TOOL_BRANCH: ${{ inputs.testnet-tool-repo-branch }}
@@ -140,7 +142,7 @@ runs:
         DO_PAT: ${{ inputs.do-token }}
         AWS_ACCESS_KEY_ID: ${{ inputs.aws-access-key-id }}
         AWS_SECRET_ACCESS_KEY: ${{ inputs.aws-access-key-secret }}
-        AWS_DEFAULT_REGION: ${{ inputs.aws-default-region }}
+        AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
         SSH_KEY_NAME: id_rsa
         NODE_COUNT: ${{ inputs.node-count }}
         PROVIDER: ${{ inputs.provider }}
