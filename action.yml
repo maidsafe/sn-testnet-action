@@ -28,16 +28,13 @@ inputs:
     required: true
   node-count:
     description: "Number of node VMs to be deployed"
-    required: true
   node-instance-count:
     description: "Number of nodes service instances to be started"
-    required: true
   provider:
     description: "The cloud provider. Valid values are 'aws' or 'digital-ocean'."
     required: true
   ssh-secret-key:
     description: "SSH key used to run the nodes on the Digital Ocean droplets"
-    required: true
   subnet-id:
     description: If running on AWS, this is the subnet of the VPC on which the VMs will be created.
   security-group-id:
@@ -83,7 +80,7 @@ runs:
         sudo mv just/just /usr/local/bin
         rm -rf just
 
-    - name: Build node and run testnet on Digital Ocean or AWS
+    - name: Create testnet
       if: inputs.action == 'create'
       env:
         DO_PAT: ${{ inputs.do-token }}
@@ -150,18 +147,14 @@ runs:
           "$CUSTOM_BIN_ORG_NAME" \
           "$CUSTOM_BIN_BRANCH_NAME" \
 
-    - name: Destroy testnet on Digital Ocean or AWS
+    - name: Destroy testnet
       if: inputs.action == 'destroy'
       env:
-        DO_PAT: ${{ inputs.do-token }}
         AWS_ACCESS_KEY_ID: ${{ inputs.aws-access-key-id }}
         AWS_SECRET_ACCESS_KEY: ${{ inputs.aws-access-key-secret }}
         AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
-        NODE_COUNT: ${{ inputs.node-count }}
+        DO_PAT: ${{ inputs.do-token }}
         PROVIDER: ${{ inputs.provider }}
-        SN_TESTNET_DEV_SUBNET_ID: ${{ inputs.subnet-id }}
-        SN_TESTNET_DEV_SECURITY_GROUP_ID: ${{ inputs.security-group-id }}
-        SSH_KEY_NAME: id_rsa
         TERRAFORM_STATE_BUCKET_NAME: maidsafe-org-infra-tfstate
         TESTNET_NAME: ${{ inputs.testnet-name }}
         TESTNET_TOOL_BRANCH: ${{ inputs.testnet-tool-repo-branch }}
@@ -169,19 +162,10 @@ runs:
       shell: bash
       run: |
         set -e
-        mkdir ~/.ssh
-        echo "${{ inputs.ssh-secret-key }}" >> ~/.ssh/id_rsa
-        chmod 0400 ~/.ssh/id_rsa
-        ssh-keygen -y -f ~/.ssh/id_rsa > ~/.ssh/id_rsa.pub
-
-        mkdir ~/.ansible
-        echo "${{ inputs.ansible-vault-password }}" >> ~/.ansible/vault-password
 
         git clone --quiet --single-branch --depth 1 \
           --branch $TESTNET_TOOL_BRANCH https://github.com/$TESTNET_TOOL_USER/sn_testnet_tool
-
         cd sn_testnet_tool
-
         export PATH=$PATH:/home/runner/.local/bin
         echo "DIGITALOCEAN_TOKEN=${{ env.DO_PAT }}" >> .env
         echo "DO_API_TOKEN=${{ env.DO_PAT }}" >> .env
@@ -189,15 +173,6 @@ runs:
         echo "AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY }}" >> .env
         echo "AWS_DEFAULT_REGION=${{ env.AWS_DEFAULT_REGION }}" >> .env
         echo "DO_PAT=${{ env.DO_PAT }}" >> .env
-        echo "SSH_KEY_NAME=${{ env.SSH_KEY_NAME }}" >> .env
-        echo "NODE_COUNT=${{ env.NODE_COUNT }}" >> .env
-        echo "PATH=$PATH:/home/runner/.local/bin" >> .env
-        echo "PROVIDER=${{ env.PROVIDER }}" >> .env
-        echo "TESTNET_NAME=${{ env.TESTNET_NAME }}" >> .env
-        echo "TESTNET_TOOL_BRANCH=${{ env.TESTNET_TOOL_BRANCH }}" >> .env
-        echo "TESTNET_TOOL_USER=${{ env.TESTNET_TOOL_USER }}" >> .env
-        echo "SN_TESTNET_DEV_SUBNET_ID=${{ env.SN_TESTNET_DEV_SUBNET_ID}} " >> .env
-        echo "SN_TESTNET_DEV_SECURITY_GROUP_ID=${{ env.SN_TESTNET_DEV_SECURITY_GROUP_ID }}" >> .env
         echo "TERRAFORM_STATE_BUCKET_NAME=${{ env.TERRAFORM_STATE_BUCKET_NAME }}" >> .env
 
         just init "$TESTNET_NAME" "$PROVIDER"
