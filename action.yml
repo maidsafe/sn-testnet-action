@@ -2,7 +2,7 @@ name: "SAFE Network Testnet Workflow Action"
 description: "GitHub action to use the sn_testnet_tool repository to deploy a testnet"
 inputs:
   action:
-    description: "Task to be carried out. Accepts 'create' or 'destroy'."
+    description: "Task to be carried out. Accepts 'create', 'clean-logs' or 'destroy'."
     default: "create"
   ansible-vault-password:
     description: Password for Ansible vault.
@@ -177,6 +177,23 @@ runs:
 
         just init "$TESTNET_NAME" "$PROVIDER"
         just clean "$TESTNET_NAME" "$PROVIDER"
+
+    - name: Clean logs
+      if: inputs.action == 'clean-logs'
+      env:
+        AWS_ACCESS_KEY_ID: ${{ inputs.aws-access-key-id }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws-access-key-secret }}
+        AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
+        TESTNET_NAME: ${{ inputs.testnet-name }}
+        TESTNET_TOOL_BRANCH: ${{ inputs.testnet-tool-repo-branch }}
+        TESTNET_TOOL_USER: ${{ inputs.testnet-tool-repo-user }}
+      shell: bash
+      run: |
+        set -e
+        git clone --quiet --single-branch --depth 1 \
+          --branch $TESTNET_TOOL_BRANCH https://github.com/$TESTNET_TOOL_USER/sn_testnet_tool
+        cd sn_testnet_tool
+        just clean-logs "$TESTNET_NAME"
 
 branding:
   icon: "globe"
