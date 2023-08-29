@@ -27,12 +27,13 @@ inputs:
     description: "The name of the testnet"
     required: true
   node-count:
-    description: "Number of node VMs to be deployed"
-  node-instance-count:
     description: "Number of nodes service instances to be started"
   provider:
     description: "The cloud provider. Valid values are 'aws' or 'digital-ocean'."
     required: true
+  rust-log:
+    description: "Set RUST_LOG to this value for sn-testnet-deploy"
+    required: false
   ssh-secret-key:
     description: "SSH key used to run the nodes on the Digital Ocean droplets"
   subnet-id:
@@ -52,6 +53,8 @@ inputs:
       The user or organisation for the testnet tool repository. This is to enable using forks to
       test changes to the testnet tool. Will default to the `jacderida`.
     default: "maidsafe"
+  vm-count:
+    description: "Number of node VMs to be deployed"
 
 runs:
   using: "composite"
@@ -60,25 +63,15 @@ runs:
       with:
         terraform_wrapper: false
     - name: install tools
-      env:
-        JUST_BIN_URL: https://github.com/casey/just/releases/download/1.13.0/just-1.13.0-x86_64-unknown-linux-musl.tar.gz
+      if: inputs.action == 'create'
       shell: bash
       run: |
         sudo apt-get update -y
-        sudo apt-get install -y bsdmainutils curl jq less unzip
-        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-        unzip awscliv2.zip >/dev/null 2>&1  # Suppress output: it generates lots of noise in the logs.
-        sudo ./aws/install --update
-        rm -rf aws awscliv2.zip
-
-        pip install --user ansible boto3
-
-        curl -L -O $JUST_BIN_URL
-        mkdir just
-        tar xvf just-1.13.0-x86_64-unknown-linux-musl.tar.gz -C just
-        rm just-1.13.0-x86_64-unknown-linux-musl.tar.gz
-        sudo mv just/just /usr/local/bin
-        rm -rf just
+        # There is some issue with the latest version of Ansible not correctly
+        # reading the Digital Ocean token from environment variables, so just
+        # pin to this version for now.
+        pip install --user ansible==8.2.0
+        pip install --user boto3
 
     - name: Create testnet
       if: inputs.action == 'create'
@@ -90,18 +83,25 @@ runs:
         CUSTOM_BIN_ORG_NAME: ${{ inputs.custom-node-bin-org-name }}
         CUSTOM_BIN_BRANCH_NAME: ${{ inputs.custom-node-bin-branch-name }}
         NODE_COUNT: ${{ inputs.node-count }}
-        NODE_INSTANCE_COUNT: ${{ inputs.node-instance-count }}
         PROVIDER: ${{ inputs.provider }}
+        RUST_LOG: ${{ inputs.rust-log }}
         SN_TESTNET_DEV_SUBNET_ID: ${{ inputs.subnet-id }}
         SN_TESTNET_DEV_SECURITY_GROUP_ID: ${{ inputs.security-group-id }}
-        SSH_KEY_NAME: id_rsa
         TESTNET_NAME: ${{ inputs.testnet-name }}
         TESTNET_TOOL_BRANCH: ${{ inputs.testnet-tool-repo-branch }}
         TESTNET_TOOL_USER: ${{ inputs.testnet-tool-repo-user }}
         TERRAFORM_STATE_BUCKET_NAME: maidsafe-org-infra-tfstate
+        VM_COUNT: ${{ inputs.vm-count }}
       shell: bash
       run: |
         set -e
+
+        if { [ -z "$CUSTOM_BIN_ORG_NAME" ] && [ -n "$CUSTOM_BIN_BRANCH_NAME" ]; } || 
+           { [ -n "$CUSTOM_BIN_ORG_NAME" ] && [ -z "$CUSTOM_BIN_BRANCH_NAME" ]; }; then
+          echo "Both CUSTOM_BIN_ORG_NAME and CUSTOM_BIN_BRANCH_NAME must be set if either are used."
+          exit 1
+        fi
+
         mkdir ~/.ssh
         echo "${{ inputs.ssh-secret-key }}" >> ~/.ssh/id_rsa
         chmod 0400 ~/.ssh/id_rsa
@@ -111,41 +111,35 @@ runs:
         echo "${{ inputs.ansible-vault-password }}" >> ~/.ansible/vault-password
 
         git clone --quiet --single-branch --depth 1 \
-          --branch $TESTNET_TOOL_BRANCH https://github.com/$TESTNET_TOOL_USER/sn_testnet_tool
-
-        cd sn_testnet_tool
+          --branch $TESTNET_TOOL_BRANCH https://github.com/$TESTNET_TOOL_USER/sn-testnet-deploy
+        cd sn-testnet-deploy
 
         export PATH=$PATH:/home/runner/.local/bin
-        echo "DIGITALOCEAN_TOKEN=${{ env.DO_PAT }}" >> .env
-        echo "DO_API_TOKEN=${{ env.DO_PAT }}" >> .env
+        echo "ANSIBLE_VAULT_PASSWORD_PATH=/home/runner/.ansible/vault-password" >> .env
         echo "AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}" >> .env
         echo "AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY }}" >> .env
         echo "AWS_DEFAULT_REGION=${{ env.AWS_DEFAULT_REGION }}" >> .env
         echo "DO_PAT=${{ env.DO_PAT }}" >> .env
-        echo "SSH_KEY_NAME=${{ env.SSH_KEY_NAME }}" >> .env
-        echo "NODE_COUNT=${{ env.NODE_COUNT }}" >> .env
-        echo "PATH=$PATH:/home/runner/.local/bin" >> .env
-        echo "PROVIDER=${{ env.PROVIDER }}" >> .env
-        echo "TESTNET_NAME=${{ env.TESTNET_NAME }}" >> .env
-        echo "TESTNET_TOOL_BRANCH=${{ env.TESTNET_TOOL_BRANCH }}" >> .env
-        echo "TESTNET_TOOL_USER=${{ env.TESTNET_TOOL_USER }}" >> .env
-        echo "SN_TESTNET_DEV_SUBNET_ID=${{ env.SN_TESTNET_DEV_SUBNET_ID}} " >> .env
+        echo "SSH_KEY_PATH=/home/runner/.ssh/id_rsa" >> .env
+        echo "SN_TESTNET_DEV_SUBNET_ID=${{ env.SN_TESTNET_DEV_SUBNET_ID }}" >> .env
         echo "SN_TESTNET_DEV_SECURITY_GROUP_ID=${{ env.SN_TESTNET_DEV_SECURITY_GROUP_ID }}" >> .env
         echo "TERRAFORM_STATE_BUCKET_NAME=${{ env.TERRAFORM_STATE_BUCKET_NAME }}" >> .env
 
-        use_custom_bin="false"
-        if [[ ! -z "${{ inputs.custom-node-bin-org-name }}" ]]; then
-          use_custom_bin="true"
+        if [[ -n $CUSTOM_BIN_ORG_NAME ]]; then
+          cargo run -- deploy \
+            --name "$TESTNET_NAME" \
+            --provider "$PROVIDER" \
+            --vm-count $VM_COUNT \
+            --node-count $NODE_COUNT \
+            --repo-owner $CUSTOM_BIN_ORG_NAME \
+            --branch $CUSTOM_BIN_BRANCH_NAME
+        else
+          cargo run -- deploy \
+            --name "$TESTNET_NAME" \
+            --provider "$PROVIDER" \
+            --vm-count $VM_COUNT \
+            --node-count $NODE_COUNT
         fi
-        just init "$TESTNET_NAME" "$PROVIDER"
-        just testnet \
-          "$TESTNET_NAME" \
-          "$PROVIDER" \
-          $NODE_COUNT \
-          $NODE_INSTANCE_COUNT \
-          "$use_custom_bin" \
-          "$CUSTOM_BIN_ORG_NAME" \
-          "$CUSTOM_BIN_BRANCH_NAME" \
 
     - name: Destroy testnet
       if: inputs.action == 'destroy'
@@ -155,6 +149,7 @@ runs:
         AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
         DO_PAT: ${{ inputs.do-token }}
         PROVIDER: ${{ inputs.provider }}
+        RUST_LOG: ${{ inputs.rust-log }}
         TERRAFORM_STATE_BUCKET_NAME: maidsafe-org-infra-tfstate
         TESTNET_NAME: ${{ inputs.testnet-name }}
         TESTNET_TOOL_BRANCH: ${{ inputs.testnet-tool-repo-branch }}
@@ -164,36 +159,19 @@ runs:
         set -e
 
         git clone --quiet --single-branch --depth 1 \
-          --branch $TESTNET_TOOL_BRANCH https://github.com/$TESTNET_TOOL_USER/sn_testnet_tool
-        cd sn_testnet_tool
-        export PATH=$PATH:/home/runner/.local/bin
-        echo "DIGITALOCEAN_TOKEN=${{ env.DO_PAT }}" >> .env
-        echo "DO_API_TOKEN=${{ env.DO_PAT }}" >> .env
+          --branch $TESTNET_TOOL_BRANCH https://github.com/$TESTNET_TOOL_USER/sn-testnet-deploy
+        cd sn-testnet-deploy
+        echo "ANSIBLE_VAULT_PASSWORD_PATH=/home/runner/.ansible/vault-password" >> .env
         echo "AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}" >> .env
         echo "AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY }}" >> .env
         echo "AWS_DEFAULT_REGION=${{ env.AWS_DEFAULT_REGION }}" >> .env
         echo "DO_PAT=${{ env.DO_PAT }}" >> .env
+        echo "SSH_KEY_PATH=/home/runner/.ssh/id_rsa" >> .env
+        echo "SN_TESTNET_DEV_SUBNET_ID=${{ env.SN_TESTNET_DEV_SUBNET_ID }}" >> .env
+        echo "SN_TESTNET_DEV_SECURITY_GROUP_ID=${{ env.SN_TESTNET_DEV_SECURITY_GROUP_ID }}" >> .env
         echo "TERRAFORM_STATE_BUCKET_NAME=${{ env.TERRAFORM_STATE_BUCKET_NAME }}" >> .env
 
-        just init "$TESTNET_NAME" "$PROVIDER"
-        just clean "$TESTNET_NAME" "$PROVIDER"
-
-    - name: Clean logs
-      if: inputs.action == 'clean-logs'
-      env:
-        AWS_ACCESS_KEY_ID: ${{ inputs.aws-access-key-id }}
-        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws-access-key-secret }}
-        AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
-        TESTNET_NAME: ${{ inputs.testnet-name }}
-        TESTNET_TOOL_BRANCH: ${{ inputs.testnet-tool-repo-branch }}
-        TESTNET_TOOL_USER: ${{ inputs.testnet-tool-repo-user }}
-      shell: bash
-      run: |
-        set -e
-        git clone --quiet --single-branch --depth 1 \
-          --branch $TESTNET_TOOL_BRANCH https://github.com/$TESTNET_TOOL_USER/sn_testnet_tool
-        cd sn_testnet_tool
-        just clean-logs "$TESTNET_NAME"
+        cargo run -- clean --name "$TESTNET_NAME" --provider "$PROVIDER"
 
 branding:
   icon: "globe"
