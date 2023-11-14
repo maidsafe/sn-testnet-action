@@ -141,6 +141,13 @@ runs:
             --node-count $NODE_COUNT
         fi
 
+    - name: Upload the inventory file
+      if: inputs.action == 'create'
+      uses: actions/upload-artifact@main
+      with:
+        name: deploy-inventory
+        path: /home/runner/.local/share/safe/testnet-deploy
+
     - name: Destroy testnet
       if: inputs.action == 'destroy'
       env:
