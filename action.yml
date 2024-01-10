@@ -184,7 +184,7 @@ runs:
       uses: actions/upload-artifact@main
       with:
         name: deploy-inventory
-        path: /home/runner/.local/share/safe/testnet-deploy
+        path: ~/.local/share/safe/testnet-deploy
 
     - name: Set SAFE_PEERS (Linux)
       if: inputs.action == 'create'
@@ -224,7 +224,7 @@ runs:
       uses: actions/upload-artifact@main
       with:
         name: testnet_resources
-        path: sn-testnet-deploy/logs/${{ inputs.testnet-name }}
+        path: ~/sn-testnet-deploy/logs/${{ inputs.testnet-name }}
 
     - name: Rsync logs
       if: inputs.action == 'logs'
@@ -243,7 +243,7 @@ runs:
       uses: actions/upload-artifact@main
       with:
         name: testnet_logs
-        path: sn-testnet-deploy/logs/${{ inputs.testnet-name }}
+        path: ~/sn-testnet-deploy/logs/${{ inputs.testnet-name }}
 
     # We don't want the action to change dirs on it's own
     - name: Change PWD back to the original DIR
