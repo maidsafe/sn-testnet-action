@@ -127,8 +127,10 @@ runs:
         mkdir ~/.ansible
         echo "${{ inputs.ansible-vault-password }}" >> ~/.ansible/vault-password
 
-        git clone --quiet --single-branch --depth 1 \
-          --branch $TESTNET_TOOL_BRANCH https://github.com/$TESTNET_TOOL_USER/sn-testnet-deploy
+        if [ ! -d "sn-testnet-deploy" ]; then
+          git clone --quiet --single-branch --depth 1 \
+            --branch $TESTNET_TOOL_BRANCH https://github.com/$TESTNET_TOOL_USER/sn-testnet-deploy
+        fi
         cd sn-testnet-deploy
 
         export PATH=$PATH:/home/runner/.local/bin
@@ -191,8 +193,10 @@ runs:
       run: |
         set -e
 
-        git clone --quiet --single-branch --depth 1 \
-          --branch $TESTNET_TOOL_BRANCH https://github.com/$TESTNET_TOOL_USER/sn-testnet-deploy
+        if [ ! -d "sn-testnet-deploy" ]; then
+          git clone --quiet --single-branch --depth 1 \
+            --branch $TESTNET_TOOL_BRANCH https://github.com/$TESTNET_TOOL_USER/sn-testnet-deploy
+        fi
         cd sn-testnet-deploy
         echo "ANSIBLE_VAULT_PASSWORD_PATH=/home/runner/.ansible/vault-password" >> .env
         echo "AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}" >> .env
