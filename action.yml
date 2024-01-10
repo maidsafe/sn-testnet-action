@@ -162,6 +162,7 @@ runs:
           exit 1
         fi
 
+        cd ~/sn-testnet-deploy
         if [[ -n $CUSTOM_BIN_ORG_NAME ]]; then
           cargo run -- deploy \
             --name "$TESTNET_NAME" \
@@ -203,6 +204,7 @@ runs:
       shell: bash
       run: |
         set -e
+        cd ~/sn-testnet-deploy
         cargo run -- clean --name "$TESTNET_NAME" --provider "$PROVIDER"
 
     - name: Get resources
@@ -214,6 +216,7 @@ runs:
       shell: bash
       run: |
         set -e
+        cd ~/sn-testnet-deploy
         cargo run -- logs copy --name "$TESTNET_NAME" --provider "$PROVIDER" --resources-only
       
     - name: Upload the resources
@@ -232,6 +235,7 @@ runs:
       shell: bash
       run: |
         set -e
+        cd ~/sn-testnet-deploy
         cargo run -- logs rsync --name "$TESTNET_NAME" --provider "$PROVIDER"
       
     - name: Upload the logs
