@@ -72,6 +72,7 @@ runs:
         # pin to this version for now.
         pip install --user ansible==8.2.0
         pip install --user boto3
+        sudo apt-get install jq -y
 
     - name: Create testnet
       if: inputs.action == 'create'
@@ -147,6 +148,15 @@ runs:
       with:
         name: deploy-inventory
         path: /home/runner/.local/share/safe/testnet-deploy
+
+    - name: Set SAFE_PEERS (Linux)
+      if: inputs.action == 'create'
+      shell: bash
+      run: |
+        inventory_path=/home/runner/.local/share/safe/testnet-deploy/"${{ inputs.testnet-name }}"-inventory.json
+        echo "Inventory Path: $inventory_path"
+        genesis_multiaddr=$(jq -r '.genesis_multiaddr' $inventory_path)
+        echo "SAFE_PEERS=$genesis_multiaddr" >> $GITHUB_ENV
 
     - name: Destroy testnet
       if: inputs.action == 'destroy'
