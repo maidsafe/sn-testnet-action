@@ -2,7 +2,7 @@ name: "SAFE Network Testnet Workflow Action"
 description: "GitHub action to use the sn_testnet_tool repository to deploy a testnet"
 inputs:
   action:
-    description: "Task to be carried out. Accepts 'create', 'destroy', or 'resources'"
+    description: "Task to be carried out. Accepts 'create', 'destroy', 'resources' or 'logs'"
     default: "create"
   ansible-vault-password:
     description: Password for Ansible vault.
@@ -242,7 +242,46 @@ runs:
       if: inputs.action == 'resources'
       uses: actions/upload-artifact@main
       with:
-        name: resources
+        name: testnet_resources
+        path: sn-testnet-deploy/logs/${{ inputs.testnet-name }}
+
+    - name: Rsync logs
+      if: inputs.action == 'logs'
+      env:
+        AWS_ACCESS_KEY_ID: ${{ inputs.aws-access-key-id }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws-access-key-secret }}
+        AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
+        DO_PAT: ${{ inputs.do-token }}
+        PROVIDER: ${{ inputs.provider }}
+        RUST_LOG: ${{ inputs.rust-log }}
+        TERRAFORM_STATE_BUCKET_NAME: maidsafe-org-infra-tfstate
+        TESTNET_NAME: ${{ inputs.testnet-name }}
+        TESTNET_TOOL_BRANCH: ${{ inputs.testnet-tool-repo-branch }}
+        TESTNET_TOOL_USER: ${{ inputs.testnet-tool-repo-user }}
+      shell: bash
+      run: |
+        set -e
+
+        cd ~/sn-testnet-deploy
+
+        export PATH=$PATH:/home/runner/.local/bin
+        echo "ANSIBLE_VAULT_PASSWORD_PATH=/home/runner/.ansible/vault-password" >> .env
+        echo "AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}" >> .env
+        echo "AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY }}" >> .env
+        echo "AWS_DEFAULT_REGION=${{ env.AWS_DEFAULT_REGION }}" >> .env
+        echo "DO_PAT=${{ env.DO_PAT }}" >> .env
+        echo "SSH_KEY_PATH=/home/runner/.ssh/id_rsa" >> .env
+        echo "SN_TESTNET_DEV_SUBNET_ID=${{ env.SN_TESTNET_DEV_SUBNET_ID }}" >> .env
+        echo "SN_TESTNET_DEV_SECURITY_GROUP_ID=${{ env.SN_TESTNET_DEV_SECURITY_GROUP_ID }}" >> .env
+        echo "TERRAFORM_STATE_BUCKET_NAME=${{ env.TERRAFORM_STATE_BUCKET_NAME }}" >> .env
+
+        cargo run -- logs rsync --name "$TESTNET_NAME" --provider "$PROVIDER"
+      
+    - name: Upload the resources
+      if: inputs.action == 'logs'
+      uses: actions/upload-artifact@main
+      with:
+        name: testnet_logs
         path: sn-testnet-deploy/logs/${{ inputs.testnet-name }}
 
     - name: Change PWD back to the original DIR
