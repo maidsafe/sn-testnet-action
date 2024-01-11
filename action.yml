@@ -183,7 +183,7 @@ runs:
       if: inputs.action == 'create'
       uses: actions/upload-artifact@main
       with:
-        name: deploy-inventory
+        name: wan_testnet_deployment_inventory
         path: ~/.local/share/safe/testnet-deploy
 
     - name: Set SAFE_PEERS (Linux)
@@ -223,7 +223,7 @@ runs:
       if: inputs.action == 'resources'
       uses: actions/upload-artifact@main
       with:
-        name: testnet_resources
+        name: wan_testnet_resources
         path: ~/sn-testnet-deploy/logs/${{ inputs.testnet-name }}
 
     - name: Rsync logs
@@ -242,7 +242,7 @@ runs:
       if: inputs.action == 'logs'
       uses: actions/upload-artifact@main
       with:
-        name: testnet_logs
+        name: wan_testnet_logs
         path: ~/sn-testnet-deploy/logs/${{ inputs.testnet-name }}
 
     # We don't want the action to change dirs on it's own
