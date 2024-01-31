@@ -166,6 +166,7 @@ runs:
         if [[ -n $CUSTOM_BIN_ORG_NAME ]]; then
           cargo run -- deploy \
             --name "$TESTNET_NAME" \
+            --public-rpc \
             --provider "$PROVIDER" \
             --vm-count $VM_COUNT \
             --node-count $NODE_COUNT \
@@ -174,6 +175,7 @@ runs:
         else
           cargo run -- deploy \
             --name "$TESTNET_NAME" \
+            --public-rpc \
             --provider "$PROVIDER" \
             --vm-count $VM_COUNT \
             --node-count $NODE_COUNT
