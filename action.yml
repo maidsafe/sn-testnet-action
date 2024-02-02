@@ -171,14 +171,16 @@ runs:
             --vm-count $VM_COUNT \
             --node-count $NODE_COUNT \
             --repo-owner $CUSTOM_BIN_ORG_NAME \
-            --branch $CUSTOM_BIN_BRANCH_NAME
+            --branch $CUSTOM_BIN_BRANCH_NAME \
+            --ansible-verbose
         else
           cargo run -- deploy \
             --name "$TESTNET_NAME" \
             --public-rpc \
             --provider "$PROVIDER" \
             --vm-count $VM_COUNT \
-            --node-count $NODE_COUNT
+            --node-count $NODE_COUNT \
+            --ansible-verbose
         fi
 
     - name: Upload the inventory file
