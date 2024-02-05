@@ -31,6 +31,9 @@ inputs:
   provider:
     description: "The cloud provider. Valid values are 'aws' or 'digital-ocean'."
     required: true
+  re-attempts:
+    description: "The number of times to re-run the testnet-tool in case of a failure."
+    default: "0"
   rust-log:
     description: "Set RUST_LOG to this value for sn-testnet-deploy"
     required: false
@@ -152,6 +155,7 @@ runs:
         RUST_LOG: ${{ inputs.rust-log }}
         TESTNET_NAME: ${{ inputs.testnet-name }}
         VM_COUNT: ${{ inputs.vm-count }}
+        RETRY_ATTEMPTS: ${{ inputs.re-attempts }}
       shell: bash
       run: |
         set -e
@@ -163,24 +167,44 @@ runs:
         fi
 
         cd ~/sn-testnet-deploy
-        if [[ -n $CUSTOM_BIN_ORG_NAME ]]; then
-          cargo run -- deploy \
-            --name "$TESTNET_NAME" \
-            --public-rpc \
-            --provider "$PROVIDER" \
-            --vm-count $VM_COUNT \
-            --node-count $NODE_COUNT \
-            --repo-owner $CUSTOM_BIN_ORG_NAME \
-            --branch $CUSTOM_BIN_BRANCH_NAME \
-            --ansible-verbose
-        else
-          cargo run -- deploy \
-            --name "$TESTNET_NAME" \
-            --public-rpc \
-            --provider "$PROVIDER" \
-            --vm-count $VM_COUNT \
-            --node-count $NODE_COUNT \
-            --ansible-verbose
+
+        # +1 as default retry_attempts is 0
+        max_attempts=$((RETRY_ATTEMPTS + 1))
+        for i in $(seq 1 $max_attempts); do
+          echo "Attempt $i of $max_attempts"
+          
+          if [[ -n $CUSTOM_BIN_ORG_NAME ]]; then
+            cargo run -- deploy \
+              --name "$TESTNET_NAME" \
+              --public-rpc \
+              --provider "$PROVIDER" \
+              --vm-count $VM_COUNT \
+              --node-count $NODE_COUNT \
+              --repo-owner $CUSTOM_BIN_ORG_NAME \
+              --branch $CUSTOM_BIN_BRANCH_NAME \
+              --ansible-verbose
+          else
+            cargo run -- deploy \
+              --name "$TESTNET_NAME" \
+              --public-rpc \
+              --provider "$PROVIDER" \
+              --vm-count $VM_COUNT \
+              --node-count $NODE_COUNT \
+              --ansible-verbose
+          fi
+
+          result=$?
+          if [[ $result -eq 0 ]]; then
+            echo "Testnet tool completed successfully."
+            break
+          else
+            echo "Attempt $i of testnet tool failed. Retrying..."
+          fi
+        done
+
+        if [[ $result -ne 0 ]]; then
+          echo "All attempts to run testnet tool failed!!"
+          exit 1
         fi
 
     - name: Upload the inventory file
@@ -206,11 +230,30 @@ runs:
         PROVIDER: ${{ inputs.provider }}
         RUST_LOG: ${{ inputs.rust-log }}
         TESTNET_NAME: ${{ inputs.testnet-name }}
+        RETRY_ATTEMPTS: ${{ inputs.re-attempts }}
       shell: bash
       run: |
         set -e
         cd ~/sn-testnet-deploy
-        cargo run -- clean --name "$TESTNET_NAME" --provider "$PROVIDER"
+
+        max_attempts=$((RETRY_ATTEMPTS + 1))
+        for i in $(seq 1 $max_attempts); do
+          echo "Attempt $i of $max_attempts"
+          
+          cargo run -- clean --name "$TESTNET_NAME" --provider "$PROVIDER"
+          result=$?
+          if [[ $result -eq 0 ]]; then
+            echo "Testnet tool completed successfully."
+            break
+          else
+            echo "Attempt $i of testnet tool failed. Retrying..."
+          fi
+        done
+
+        if [[ $result -ne 0 ]]; then
+          echo "All attempts to run testnet tool failed!!"
+          exit 1
+        fi
 
     - name: Get resources
       if: inputs.action == 'resources'
@@ -237,11 +280,31 @@ runs:
         PROVIDER: ${{ inputs.provider }}
         RUST_LOG: ${{ inputs.rust-log }}
         TESTNET_NAME: ${{ inputs.testnet-name }}
+        RETRY_ATTEMPTS: ${{ inputs.re-attempts }}
       shell: bash
       run: |
         set -e
         cd ~/sn-testnet-deploy
-        cargo run -- logs rsync --name "$TESTNET_NAME" --provider "$PROVIDER"
+
+        max_attempts=$((RETRY_ATTEMPTS + 1))
+        for i in $(seq 1 $max_attempts); do
+          echo "Attempt $i of $max_attempts"
+          
+          cargo run -- logs rsync --name "$TESTNET_NAME" --provider "$PROVIDER"
+          result=$?
+          if [[ $result -eq 0 ]]; then
+            echo "Testnet tool completed successfully."
+            break
+          else
+            echo "Attempt $i of testnet tool failed. Retrying..."
+          fi
+        done
+
+        if [[ $result -ne 0 ]]; then
+          echo "All attempts to run testnet tool failed!!"
+          exit 1
+        fi
+
       
     - name: Upload the logs
       if: inputs.action == 'logs'
