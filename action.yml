@@ -173,6 +173,8 @@ runs:
         for i in $(seq 1 $max_attempts); do
           echo "Attempt $i of $max_attempts"
           
+          # Temporarily turn off 'exit on error'
+          set +e
           if [[ -n $CUSTOM_BIN_ORG_NAME ]]; then
             cargo run -- deploy \
               --name "$TESTNET_NAME" \
@@ -192,8 +194,10 @@ runs:
               --node-count $NODE_COUNT \
               --ansible-verbose
           fi
-
           result=$?
+          # Re-enable 'exit on error'
+          set -e
+
           if [[ $result -eq 0 ]]; then
             echo "Testnet tool completed successfully."
             break
@@ -240,8 +244,13 @@ runs:
         for i in $(seq 1 $max_attempts); do
           echo "Attempt $i of $max_attempts"
           
+          # Temporarily turn off 'exit on error'
+          set +e
           cargo run -- clean --name "$TESTNET_NAME" --provider "$PROVIDER"
           result=$?
+          # Re-enable 'exit on error'
+          set -e
+
           if [[ $result -eq 0 ]]; then
             echo "Testnet tool completed successfully."
             break
@@ -265,7 +274,30 @@ runs:
       run: |
         set -e
         cd ~/sn-testnet-deploy
-        cargo run -- logs copy --name "$TESTNET_NAME" --provider "$PROVIDER" --resources-only
+
+        max_attempts=$((RETRY_ATTEMPTS + 1))
+        for i in $(seq 1 $max_attempts); do
+          echo "Attempt $i of $max_attempts"
+          
+          # Temporarily turn off 'exit on error'
+          set +e
+          cargo run -- logs rsync --name "$TESTNET_NAME" --provider "$PROVIDER" --resources-only
+          result=$?
+          # Re-enable 'exit on error'
+          set -e
+
+          if [[ $result -eq 0 ]]; then
+            echo "Testnet tool completed successfully."
+            break
+          else
+            echo "Attempt $i of testnet tool failed. Retrying..."
+          fi
+        done
+
+        if [[ $result -ne 0 ]]; then
+          echo "All attempts to run testnet tool failed!!"
+          exit 1
+        fi
       
     - name: Upload the resources
       if: inputs.action == 'resources'
@@ -290,8 +322,13 @@ runs:
         for i in $(seq 1 $max_attempts); do
           echo "Attempt $i of $max_attempts"
           
+          # Temporarily turn off 'exit on error'
+          set +e
           cargo run -- logs rsync --name "$TESTNET_NAME" --provider "$PROVIDER"
           result=$?
+          # Re-enable 'exit on error'
+          set -e
+
           if [[ $result -eq 0 ]]; then
             echo "Testnet tool completed successfully."
             break
@@ -305,7 +342,6 @@ runs:
           exit 1
         fi
 
-      
     - name: Upload the logs
       if: inputs.action == 'logs'
       uses: actions/upload-artifact@main
