@@ -1,0 +1,104 @@
+name: "SAFE Network Testnet Workflow Action"
+description: "GitHub action to use the sn-testnet-deploy repository to execute commands on a running network"
+inputs:
+  # General inputs
+  action:
+    description: "Task to be carried out. Accepts 'churn-fixed', 'churn-random'"
+    required: true
+  rust-log:
+    description: "Set RUST_LOG to this value for sn-testnet-deploy"
+    required: false
+  ssh-secret-key:
+    description: "SSH key used to run the nodes on the Digital Ocean droplets"
+  subnet-id:
+    description: If running on AWS, this is the subnet of the VPC on which the VMs will be created.
+  security-group-id:
+    description: If running on AWS, this is the ID of the security groups the VMs will use.
+  testnet-name:
+    description: "The name of the testnet. This network must be up and running."
+    required: true
+  testnet-tool-repo-branch:
+    description: >
+      The branch for the testnet deploy repository. This is to enable using forks to test changes to
+      the testnet tool.
+    default: "main"
+  testnet-tool-repo-user:
+    description: >
+      The user or organisation for the testnet deploy repository. This is to enable using forks to
+      test changes to the testnet tool.
+    default: "maidsafe"
+
+  # churn
+  churn-cycles:
+    description: "The number of time each node in the network is restarted."
+  retain-peer-id:
+    description: "Whether to retain the same PeerId on restart."
+  # churn-fixed
+  fixed-churn-interval:
+    description: "The interval between each node churn. In seconds."
+  fixed-churn-concurrency:
+    description: "The number of nodes to restart concurrently per VM."
+  # churn-random
+  random-churn-time-frame: 
+    description: "The time frame in which the churn_count nodes are restarted. Nodes are restarted at a
+     rate of churn_count/time_frame with random delays between each restart."
+  random-churn-count:
+    description: "Number of nodes to restart in the given time frame."
+
+runs:
+  using: "composite"
+  steps:
+    - name: Clone the deployer
+      shell: bash
+      env:
+        TESTNET_TOOL_BRANCH: ${{ inputs.testnet-tool-repo-branch }}
+        TESTNET_TOOL_USER: ${{ inputs.testnet-tool-repo-user }}
+      run: |
+        set -e
+
+        # This action might be called from inside another repo (after checking out). Thus we should clone the deployer
+        # inside home.
+        cd ~
+        echo "ORIGINAL_DIR=$(pwd)" >> $GITHUB_ENV
+
+        if [ ! -d "sn-testnet-deploy" ]; then
+          git clone --quiet --single-branch --depth 1 \
+            --branch $TESTNET_TOOL_BRANCH https://github.com/$TESTNET_TOOL_USER/sn-testnet-deploy
+        fi
+
+    - name: Fixed Interval Churn
+      if: inputs.action == 'churn-fixed'
+      env:
+        RUST_LOG: ${{ inputs.rust-log }}
+        TESTNET_NAME: ${{ inputs.testnet-name }}
+        CHURN_CYCLES: ${{ inputs.churn-cycles }}
+        RETAIN_PEER_ID: ${{ inputs.retain-peer-id }}
+        CHURN_INTERVAL: ${{ inputs.fixed-churn-interval }}
+        CONCURRENT_CHURNS: ${{ inputs.fixed-churn-concurrency }}
+      shell: bash
+      run: |
+        set -e
+        cd ~/sn-testnet-deploy
+
+        cargo run -- network churn fixed-interval --name "$TESTNET_NAME" --interval "$CHURN_INTERVAL" --concurrent-churns "$CONCURRENT_CHURNS" ${RETAIN_PEER_ID:+--retain-peer-id}  --churn-cycles "$CHURN_CYCLES"
+
+    - name: Random Interval Churn
+      if: inputs.action == 'churn-random'
+      env:
+        RUST_LOG: ${{ inputs.rust-log }}
+        TESTNET_NAME: ${{ inputs.testnet-name }}
+        CHURN_CYCLES: ${{ inputs.churn-cycles }}
+        RETAIN_PEER_ID: ${{ inputs.retain-peer-id }}
+        TIME_FRAME: ${{ inputs.random-churn-time-frame }}
+        CHURN_COUNT: ${{ inputs.random-churn-count }}
+      shell: bash
+      run: |
+        set -e
+        cd ~/sn-testnet-deploy
+
+        cargo run -- network churn random-interval --name "$TESTNET_NAME" --time-frame "$TIME_FRAME" --churn-count "$CHURN_COUNT" ${RETAIN_PEER_ID:+--retain-peer-id} --churn-cycles "$CHURN_CYCLES"
+
+    - name: Change PWD back to the original DIR
+      shell: bash
+      run: |
+        cd "$ORIGINAL_DIR"
