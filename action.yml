@@ -1,9 +1,10 @@
 name: "SAFE Network Testnet Workflow Action"
-description: "GitHub action to use the sn_testnet_tool repository to deploy a testnet"
+description: "GitHub action to use the sn-testnet-deploy repository to deploy a testnet"
 inputs:
+  # General inputs
   action:
     description: "Task to be carried out. Accepts 'create', 'destroy', 'resources' or 'logs'"
-    default: "create"
+    required: true
   ansible-vault-password:
     description: Password for Ansible vault.
     required: true
@@ -13,6 +14,7 @@ inputs:
     description: "AWS access key"
   aws-region:
     description: "AWS region"
+    default: eu-west-2
   custom-node-bin-org-name:
     description: >
       If using a custom node binary, set this to the name of the org or username of the repository.
@@ -23,9 +25,6 @@ inputs:
       The repository will be cloned and the binary will be built using this branch.
   do-token:
     description: "Digital Ocean Authorization token"
-  name:
-    description: "The name of the testnet"
-    required: true
   node-count:
     description: "Number of nodes service instances to be started"
   provider:
@@ -48,13 +47,13 @@ inputs:
     required: true
   testnet-tool-repo-branch:
     description: >
-      The branch for the testnet tool repository. This is to enable using forks to test changes to
-      the testnet tool. Will default to the `digital-ocean-refactor` branch.
+      The branch for the testnet deploy repository. This is to enable using forks to test changes to
+      the testnet tool.
     default: "main"
   testnet-tool-repo-user:
     description: >
-      The user or organisation for the testnet tool repository. This is to enable using forks to
-      test changes to the testnet tool. Will default to the `jacderida`.
+      The user or organisation for the testnet deploy repository. This is to enable using forks to
+      test changes to the testnet tool.
     default: "maidsafe"
   vm-count:
     description: "Number of node VMs to be deployed"
