@@ -1,5 +1,7 @@
 name: "SAFE Network Testnet Workflow Action"
-description: "GitHub action to use the sn-testnet-deploy repository to execute commands on a running network"
+description: >
+ GitHub action to use the sn-testnet-deploy repository to execute commands on a running network. These commands
+ expects the inventory file to be present. Execute `fetch-inventory` from maidsafe/sn-testnet-action to obtain it.
 inputs:
   # General inputs
   action:
@@ -8,12 +10,6 @@ inputs:
   rust-log:
     description: "Set RUST_LOG to this value for sn-testnet-deploy"
     required: false
-  ssh-secret-key:
-    description: "SSH key used to run the nodes on the Digital Ocean droplets"
-  subnet-id:
-    description: If running on AWS, this is the subnet of the VPC on which the VMs will be created.
-  security-group-id:
-    description: If running on AWS, this is the ID of the security groups the VMs will use.
   testnet-name:
     description: "The name of the testnet. This network must be up and running."
     required: true

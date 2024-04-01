@@ -3,7 +3,7 @@ description: "GitHub action to use the sn-testnet-deploy repository to deploy a 
 inputs:
   # General inputs
   action:
-    description: "Task to be carried out. Accepts 'create', 'destroy', 'resources' or 'logs'"
+    description: "Task to be carried out. Accepts 'create', 'destroy', 'resources', 'logs', 'inventory'"
     required: true
   ansible-vault-password:
     description: Password for Ansible vault.
@@ -61,6 +61,7 @@ inputs:
 runs:
   using: "composite"
   steps:
+    # ======   Prerequisites   ======
     - uses: hashicorp/setup-terraform@v1
       with:
         terraform_wrapper: false
@@ -143,6 +144,8 @@ runs:
         fi
 
         export PATH=$PATH:/home/runner/.local/bin
+
+    # ======   Create Testnet   ======
 
     - name: Create testnet
       if: inputs.action == 'create'
@@ -227,6 +230,8 @@ runs:
         echo "SAFE_PEERS=$genesis_multiaddr" >> $GITHUB_ENV
         echo "SN_INVENTORY=$inventory_path" >> $GITHUB_ENV
 
+    # ======   Destroy Testnet   ======
+    
     - name: Destroy testnet
       if: inputs.action == 'destroy'
       env:
@@ -263,6 +268,8 @@ runs:
           exit 1
         fi
 
+    # ======   Get resources   ======
+    
     - name: Get resources
       if: inputs.action == 'resources'
       env:
@@ -305,6 +312,8 @@ runs:
         name: wan_testnet_resources_${{ inputs.testnet-name }}
         path: ~/sn-testnet-deploy/logs/${{ inputs.testnet-name }}
 
+    # ======   Rsync logs   ======
+    
     - name: Rsync logs
       if: inputs.action == 'logs'
       env:
@@ -347,6 +356,67 @@ runs:
       with:
         name: wan_testnet_logs_${{ inputs.testnet-name }}
         path: ~/sn-testnet-deploy/logs/${{ inputs.testnet-name }}
+
+    # ======   Fetch inventory   ======
+    
+    - name: Fetch inventory
+      if: inputs.action == 'inventory'
+      env:
+        CUSTOM_BIN_ORG_NAME: ${{ inputs.custom-node-bin-org-name }}
+        CUSTOM_BIN_BRANCH_NAME: ${{ inputs.custom-node-bin-branch-name }}
+        NODE_COUNT: ${{ inputs.node-count }}
+        PROVIDER: ${{ inputs.provider }}
+        RUST_LOG: ${{ inputs.rust-log }}
+        TESTNET_NAME: ${{ inputs.testnet-name }}
+        VM_COUNT: ${{ inputs.vm-count }}
+        RETRY_ATTEMPTS: ${{ inputs.re-attempts }}
+      shell: bash
+      run: |
+        set -e
+        cd ~/sn-testnet-deploy
+
+        max_attempts=$((RETRY_ATTEMPTS + 1))
+        for i in $(seq 1 $max_attempts); do
+          echo "Attempt $i of $max_attempts"
+          
+          # Temporarily turn off 'exit on error'
+          set +e
+          if [[ -n $CUSTOM_BIN_ORG_NAME ]]; then
+            cargo run -- inventory \
+              --name "$TESTNET_NAME" \
+              --provider "$PROVIDER" \
+              --node-count $NODE_COUNT \
+              --repo-owner $CUSTOM_BIN_ORG_NAME \
+              --branch $CUSTOM_BIN_BRANCH_NAME
+          else
+            cargo run -- inventory \
+              --name "$TESTNET_NAME" \
+              --provider "$PROVIDER" \
+              --node-count $NODE_COUNT
+
+          result=$?
+          # Re-enable 'exit on error'
+          set -e
+
+          if [[ $result -eq 0 ]]; then
+            echo "Testnet tool completed successfully."
+            break
+          else
+            echo "Attempt $i of testnet tool failed. Retrying..."
+          fi
+        done
+
+        if [[ $result -ne 0 ]]; then
+          echo "All attempts to run testnet tool failed!!"
+          exit 1
+        fi
+
+    - name: Upload the inventory file
+      if: inputs.action == 'create'
+      uses: actions/upload-artifact@main
+      with:
+        name: wan_testnet_deployment_inventory_${{ inputs.testnet-name }}
+        path: ~/.local/share/safe/testnet-deploy
 
     # We don't want the action to change dirs on it's own
     - name: Change PWD back to the original DIR
