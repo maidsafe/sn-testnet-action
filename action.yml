@@ -412,7 +412,7 @@ runs:
         fi
 
     - name: Upload the inventory file
-      if: inputs.action == 'create'
+      if: inputs.action == 'inventory'
       uses: actions/upload-artifact@main
       with:
         name: wan_testnet_deployment_inventory_${{ inputs.testnet-name }}

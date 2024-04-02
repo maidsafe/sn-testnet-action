@@ -62,13 +62,22 @@ runs:
             --branch $TESTNET_TOOL_BRANCH https://github.com/$TESTNET_TOOL_USER/sn-testnet-deploy
         fi
 
+    - name: Set Retain Peer ID Flag
+      shell: bash
+      run: |
+        if [ "${{ inputs.retain-peer-id }}" = "true" ]; then
+          echo "RETAIN_PEER_ID_FLAG=--retain-peer-id" >> $GITHUB_ENV
+        else
+          echo "RETAIN_PEER_ID_FLAG=" >> $GITHUB_ENV
+        fi
+        echo "RETAIN_PEER_ID_FLAG=${RETAIN_PEER_ID_FLAG}"
+
     - name: Fixed Interval Churn
       if: inputs.action == 'churn-fixed'
       env:
         RUST_LOG: ${{ inputs.rust-log }}
         TESTNET_NAME: ${{ inputs.testnet-name }}
         CHURN_CYCLES: ${{ inputs.churn-cycles }}
-        RETAIN_PEER_ID: ${{ inputs.retain-peer-id }}
         CHURN_INTERVAL: ${{ inputs.fixed-churn-interval }}
         CONCURRENT_CHURNS: ${{ inputs.fixed-churn-concurrency }}
       shell: bash
@@ -76,7 +85,7 @@ runs:
         set -e
         cd ~/sn-testnet-deploy
 
-        cargo run -- network churn fixed-interval --name "$TESTNET_NAME" --interval "$CHURN_INTERVAL" --concurrent-churns "$CONCURRENT_CHURNS" ${RETAIN_PEER_ID:+--retain-peer-id}  --churn-cycles "$CHURN_CYCLES"
+        cargo run -- network churn fixed-interval --name "$TESTNET_NAME" --interval "$CHURN_INTERVAL" --concurrent-churns "$CONCURRENT_CHURNS" $RETAIN_PEER_ID_FLAG  --churn-cycles "$CHURN_CYCLES"
 
     - name: Random Interval Churn
       if: inputs.action == 'churn-random'
@@ -84,7 +93,6 @@ runs:
         RUST_LOG: ${{ inputs.rust-log }}
         TESTNET_NAME: ${{ inputs.testnet-name }}
         CHURN_CYCLES: ${{ inputs.churn-cycles }}
-        RETAIN_PEER_ID: ${{ inputs.retain-peer-id }}
         TIME_FRAME: ${{ inputs.random-churn-time-frame }}
         CHURN_COUNT: ${{ inputs.random-churn-count }}
       shell: bash
@@ -92,7 +100,7 @@ runs:
         set -e
         cd ~/sn-testnet-deploy
 
-        cargo run -- network churn random-interval --name "$TESTNET_NAME" --time-frame "$TIME_FRAME" --churn-count "$CHURN_COUNT" ${RETAIN_PEER_ID:+--retain-peer-id} --churn-cycles "$CHURN_CYCLES"
+        cargo run -- network churn random-interval --name "$TESTNET_NAME" --time-frame "$TIME_FRAME" --churn-count "$CHURN_COUNT" $RETAIN_PEER_ID_FLAG --churn-cycles "$CHURN_CYCLES"
 
     - name: Change PWD back to the original DIR
       shell: bash
