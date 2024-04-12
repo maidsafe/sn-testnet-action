@@ -22,6 +22,8 @@ inputs:
   do-token:
     description: Digital Ocean Authorization token
     required: true
+  faucet-version:
+    description: Supply a version for the faucet. Otherwise the latest will be used.
   node-count:
     description: Number of nodes service instances to be started
   public-rpc:
@@ -37,6 +39,14 @@ inputs:
   rust-log:
     description: Set RUST_LOG to this value for testnet-deploy
     required: false
+  safenode-features:
+    description: Comma-separated list of features to be used when building a branch of safenode
+  safe-version:
+    description: Supply a version for safe. Otherwise the latest will be used.
+  safenode-version:
+    description: Supply a version for safenode. Otherwise the latest will be used.
+  safenode-manager-version:
+    description: Supply a version for safenode-manager. Otherwise the latest will be used.
   safe-network-branch:
     description: >
       Build binaries from the specified safe_network branch. The testnet will use these binaries.
@@ -149,11 +159,18 @@ runs:
     - name: Create testnet
       if: inputs.action == 'create'
       env:
+        ANSIBLE_VERBOSE: ${{ inputs.ansible-verbose }}
         AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
+        FAUCET_VERSION: ${{ inputs.faucet-version }}
         NODE_COUNT: ${{ inputs.node-count }}
         PROVIDER: ${{ inputs.provider }}
+        PUBLIC_RPC: ${{ inputs.public-rpc }}
         RETRY_ATTEMPTS: ${{ inputs.re-attempts }}
         RUST_LOG: ${{ inputs.rust-log }}
+        SAFE_VERSION: ${{ inputs.safe-version }}
+        SAFENODE_FEATURES: ${{ inputs.safenode-features }}
+        SAFENODE_VERSION: ${{ inputs.safenode-version }}
+        SAFENODE_MANAGER_VERSION: ${{ inputs.safenode-manager-version }}
         SAFE_NETWORK_BRANCH: ${{ inputs.safe-network-branch }}
         SAFE_NETWORK_USER: ${{ inputs.safe-network-user }}
         TESTNET_NAME: ${{ inputs.testnet-name }}
@@ -164,28 +181,27 @@ runs:
 
         cd ~/sn-testnet-deploy
 
+        command="cargo run -- deploy \
+          --name $TESTNET_NAME \
+          --provider $PROVIDER \
+          --node-count $NODE_COUNT \
+          --vm-count $VM_COUNT"
+        [[ $ANSIBLE_VERBOSE == "true" ]] && command="$command --ansible-verbose"
+        [[ $PUBLIC_RPC == "true" ]] && command="$command --public-rpc"
+        [[ -n $SAFE_VERSION ]] && command="$command --safe-version $SAFE_VERSION"
+        [[ -n $SAFENODE_FEATURES ]] && command="$command --safenode-features $SAFENODE_FEATURES"
+        [[ -n $SAFENODE_VERSION ]] && command="$command --safenode-version $SAFENODE_VERSION"
+        [[ -n $SAFENODE_MANAGER_VERSION ]] && command="$command --safenode-manager-version $SAFENODE_MANAGER_VERSION"
+        [[ -n $SAFE_NETWORK_BRANCH ]] && command="$command --branch $SAFE_NETWORK_BRANCH"
+        [[ -n $SAFE_NETWORK_USER ]] && command="$command --repo-owner $SAFE_NETWORK_USER"
+
         max_attempts=$((RETRY_ATTEMPTS + 1)) # +1 as default retry_attempts is 0
         for i in $(seq 1 $max_attempts); do
           echo "Attempt $i of $max_attempts"
           
           set +e # Temporarily turn off 'exit on error'
-          if [[ -n $SAFE_NETWORK_USER ]]; then
-            cargo run -- deploy \
-              --name "$TESTNET_NAME" \
-              --public-rpc \
-              --provider "$PROVIDER" \
-              --vm-count $VM_COUNT \
-              --node-count $NODE_COUNT \
-              --repo-owner $SAFE_NETWORK_USER \
-              --branch $SAFE_NETWORK_BRANCH
-          else
-            cargo run -- deploy \
-              --name "$TESTNET_NAME" \
-              --public-rpc \
-              --provider "$PROVIDER" \
-              --vm-count $VM_COUNT \
-              --node-count $NODE_COUNT
-          fi
+          echo "Will run testnet-deploy with: $command"
+          eval $command
           result=$?
           set -e # Re-enable 'exit on error'
 
