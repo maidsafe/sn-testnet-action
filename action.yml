@@ -3,7 +3,8 @@ description: GitHub action to use the sn-testnet-deploy repository to deploy a t
 inputs:
   action:
     description: >
-      Task to be carried out. Accepts 'create', 'destroy', 'resources', 'logs', or 'inventory'.
+      Task to be carried out.
+      Accepts 'create', 'destroy', 'resources', 'logs', 'list-inventory', 'print-inventory'.
     required: true
   ansible-vault-password:
     description: Password for Ansible vault.
@@ -362,7 +363,7 @@ runs:
     # ======   Fetch inventory   ======
     #
     - name: Fetch inventory
-      if: inputs.action == 'inventory'
+      if: inputs.action == 'list-inventory'
       env:
         NODE_COUNT: ${{ inputs.node-count }}
         PROVIDER: ${{ inputs.provider }}
@@ -423,6 +424,18 @@ runs:
       shell: bash
       run: |
         cd "$ORIGINAL_DIR"
+    #
+    # ======   Print inventory   ======
+    #
+    - name: Print inventory
+      if: inputs.action == 'print-inventory'
+      env:
+        PROVIDER: ${{ inputs.provider }}
+        TESTNET_NAME: ${{ inputs.testnet-name }}
+      shell: bash
+      run: |
+        cd ~/sn-testnet-deploy
+        cargo run -- inventory --name $TESTNET_NAME --force-regeneration
 
 branding:
   icon: "globe"
