@@ -150,8 +150,9 @@ runs:
     - name: Create testnet
       if: inputs.action == 'create'
       env:
-        CUSTOM_BIN_ORG_NAME: ${{ inputs.custom-node-bin-org-name }}
+        AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
         CUSTOM_BIN_BRANCH_NAME: ${{ inputs.custom-node-bin-branch-name }}
+        CUSTOM_BIN_ORG_NAME: ${{ inputs.custom-node-bin-org-name }}
         NODE_COUNT: ${{ inputs.node-count }}
         PROVIDER: ${{ inputs.provider }}
         RUST_LOG: ${{ inputs.rust-log }}
@@ -230,11 +231,13 @@ runs:
         echo "SAFE_PEERS=$genesis_multiaddr" >> $GITHUB_ENV
         echo "SN_INVENTORY=$inventory_path" >> $GITHUB_ENV
 
+    #
     # ======   Destroy Testnet   ======
-    
+    #
     - name: Destroy testnet
       if: inputs.action == 'destroy'
       env:
+        AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
         PROVIDER: ${{ inputs.provider }}
         RUST_LOG: ${{ inputs.rust-log }}
         TESTNET_NAME: ${{ inputs.testnet-name }}
