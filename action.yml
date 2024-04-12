@@ -1,43 +1,51 @@
-name: "SAFE Network Testnet Workflow Action"
-description: "GitHub action to use the sn-testnet-deploy repository to deploy a testnet"
+name: SAFE Network Testnet Workflow Action
+description: GitHub action to use the sn-testnet-deploy repository to deploy a testnet
 inputs:
-  # General inputs
   action:
-    description: "Task to be carried out. Accepts 'create', 'destroy', 'resources', 'logs', 'inventory'"
+    description: >
+      Task to be carried out. Accepts 'create', 'destroy', 'resources', 'logs', or 'inventory'.
     required: true
   ansible-vault-password:
     description: Password for Ansible vault.
     required: true
+  ansible-verbose:
+    description: Set to use verbose output for Ansible
+    required: true
+    default: false
   aws-access-key-id:
-    description: "AWS access key ID"
+    description: AWS access key ID
   aws-access-key-secret:
-    description: "AWS access key"
+    description: AWS access key
   aws-region:
-    description: "AWS region"
+    description: AWS region
     default: eu-west-2
-  custom-node-bin-org-name:
-    description: >
-      If using a custom node binary, set this to the name of the org or username of the repository.
-      The repository will be cloned and the binary will be built.
-  custom-node-bin-branch-name:
-    description: >
-      If using a custom node binary, set this to the branch on the repository you want to use.
-      The repository will be cloned and the binary will be built using this branch.
   do-token:
-    description: "Digital Ocean Authorization token"
+    description: Digital Ocean Authorization token
+    required: true
   node-count:
-    description: "Number of nodes service instances to be started"
+    description: Number of nodes service instances to be started
+  public-rpc:
+    description: Set to make node manager RPC daemons publicly accessible
+    required: true
+    default: false
   provider:
-    description: "The cloud provider. Valid values are 'aws' or 'digital-ocean'."
+    description: The cloud provider. Accepts 'aws' or 'digital-ocean'.
     required: true
   re-attempts:
-    description: "The number of times to re-run the testnet-tool in case of a failure."
+    description: The number of times to re-run testnet-deploy in case of failures.
     default: "0"
   rust-log:
-    description: "Set RUST_LOG to this value for sn-testnet-deploy"
+    description: Set RUST_LOG to this value for testnet-deploy
     required: false
+  safe-network-branch:
+    description: >
+      Build binaries from the specified safe_network branch. The testnet will use these binaries.
+  safe-network-user:
+    description: >
+      Build binaries from the safe_network repository owned by this org or username. The testnet
+      will use these binaries.
   ssh-secret-key:
-    description: "SSH key used to run the nodes on the Digital Ocean droplets"
+    description: SSH key used to run the nodes on the Digital Ocean droplets
   subnet-id:
     description: If running on AWS, this is the subnet of the VPC on which the VMs will be created.
   security-group-id:
@@ -45,23 +53,25 @@ inputs:
   testnet-name:
     description: The name of the testnet.
     required: true
-  testnet-tool-repo-branch:
+  testnet-deploy-branch:
     description: >
-      The branch for the testnet deploy repository. This is to enable using forks to test changes to
-      the testnet tool.
+      The branch for the sn-testnet-deploy repository. Enables using forks to test changes for
+      testnet-deploy.
     default: "main"
-  testnet-tool-repo-user:
+  testnet-deploy-user:
     description: >
-      The user or organisation for the testnet deploy repository. This is to enable using forks to
-      test changes to the testnet tool.
-    default: "maidsafe"
+      The user or organisation for the sn-testnet-deploy repository. Enables using forks to test
+      changes for testnet-deploy.
+    default: maidsafe
   vm-count:
-    description: "Number of node VMs to be deployed"
+    description: Number of node VMs to be deployed
 
 runs:
-  using: "composite"
+  using: composite
   steps:
+    #
     # ======   Prerequisites   ======
+    #
     - uses: hashicorp/setup-terraform@v1
       with:
         terraform_wrapper: false
@@ -88,118 +98,96 @@ runs:
     - name: Clone the deployer and setup prerequisite files
       shell: bash
       env:
-        DO_PAT: ${{ inputs.do-token }}
         AWS_ACCESS_KEY_ID: ${{ inputs.aws-access-key-id }}
-        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws-access-key-secret }}
         AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
-        CUSTOM_BIN_ORG_NAME: ${{ inputs.custom-node-bin-org-name }}
-        CUSTOM_BIN_BRANCH_NAME: ${{ inputs.custom-node-bin-branch-name }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws-access-key-secret }}
+        DO_PAT: ${{ inputs.do-token }}
         NODE_COUNT: ${{ inputs.node-count }}
         PROVIDER: ${{ inputs.provider }}
         RUST_LOG: ${{ inputs.rust-log }}
-        SN_TESTNET_DEV_SUBNET_ID: ${{ inputs.subnet-id }}
+        SAFE_NETWORK_BRANCH: ${{ inputs.safe-network-branch }}
+        SAFE_NETWORK_USER: ${{ inputs.safe-network-user }}
         SN_TESTNET_DEV_SECURITY_GROUP_ID: ${{ inputs.security-group-id }}
-        TESTNET_NAME: ${{ inputs.testnet-name }}
-        TESTNET_TOOL_BRANCH: ${{ inputs.testnet-tool-repo-branch }}
-        TESTNET_TOOL_USER: ${{ inputs.testnet-tool-repo-user }}
+        SN_TESTNET_DEV_SUBNET_ID: ${{ inputs.subnet-id }}
         TERRAFORM_STATE_BUCKET_NAME: maidsafe-org-infra-tfstate
+        TESTNET_DEPLOY_BRANCH: ${{ inputs.testnet-deploy-branch }}
+        TESTNET_DEPLOY_USER: ${{ inputs.testnet-deploy-user }}
+        TESTNET_NAME: ${{ inputs.testnet-name }}
         VM_COUNT: ${{ inputs.vm-count }}
       run: |
         set -e
 
-        # This action might be called from inside another repo (after checking out). Thus we should clone the deployer
-        # inside home.
+        # This action might be called from inside another repo (after checking
+        # out). Thus we should clone the deployer inside home.
         cd ~
         echo "ORIGINAL_DIR=$(pwd)" >> $GITHUB_ENV
 
-        if [ ! -d "sn-testnet-deploy" ]; then
-          git clone --quiet --single-branch --depth 1 \
-            --branch $TESTNET_TOOL_BRANCH https://github.com/$TESTNET_TOOL_USER/sn-testnet-deploy
-        fi
+        git clone --quiet --single-branch --depth 1 \
+          --branch $TESTNET_DEPLOY_BRANCH https://github.com/$TESTNET_DEPLOY_USER/sn-testnet-deploy
 
-        if [ ! -f ~/.ssh/id_rsa ]; then
-          mkdir ~/.ssh
-          echo "${{ inputs.ssh-secret-key }}" >> ~/.ssh/id_rsa
-          chmod 0400 ~/.ssh/id_rsa
-          ssh-keygen -y -f ~/.ssh/id_rsa > ~/.ssh/id_rsa.pub
-        fi
+        mkdir ~/.ssh
+        echo "${{ inputs.ssh-secret-key }}" >> ~/.ssh/id_rsa
+        chmod 0400 ~/.ssh/id_rsa
+        ssh-keygen -y -f ~/.ssh/id_rsa > ~/.ssh/id_rsa.pub
 
-        if [ ! -f ~/.ansible/vault-password ]; then
-          mkdir ~/.ansible
-          echo "${{ inputs.ansible-vault-password }}" >> ~/.ansible/vault-password
-        fi
+        mkdir ~/.ansible
+        echo "${{ inputs.ansible-vault-password }}" >> ~/.ansible/vault-password
 
-        # .env file should be present inside the deployer 
         cd sn-testnet-deploy
-        if [ ! -f ".env" ]; then
-          echo "ANSIBLE_VAULT_PASSWORD_PATH=/home/runner/.ansible/vault-password" >> .env
-          echo "AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}" >> .env
-          echo "AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY }}" >> .env
-          echo "AWS_DEFAULT_REGION=${{ env.AWS_DEFAULT_REGION }}" >> .env
-          echo "DO_PAT=${{ env.DO_PAT }}" >> .env
-          echo "SSH_KEY_PATH=/home/runner/.ssh/id_rsa" >> .env
-          echo "SN_TESTNET_DEV_SUBNET_ID=${{ env.SN_TESTNET_DEV_SUBNET_ID }}" >> .env
-          echo "SN_TESTNET_DEV_SECURITY_GROUP_ID=${{ env.SN_TESTNET_DEV_SECURITY_GROUP_ID }}" >> .env
-          echo "TERRAFORM_STATE_BUCKET_NAME=${{ env.TERRAFORM_STATE_BUCKET_NAME }}" >> .env
-        fi
-
-        export PATH=$PATH:/home/runner/.local/bin
-
+        echo "ANSIBLE_VAULT_PASSWORD_PATH=/home/runner/.ansible/vault-password" >> .env
+        echo "AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}" >> .env
+        echo "AWS_DEFAULT_REGION=${{ env.AWS_DEFAULT_REGION }}" >> .env
+        echo "AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY }}" >> .env
+        echo "DO_PAT=${{ env.DO_PAT }}" >> .env
+        echo "SSH_KEY_PATH=/home/runner/.ssh/id_rsa" >> .env
+        echo "SN_TESTNET_DEV_SUBNET_ID=${{ env.SN_TESTNET_DEV_SUBNET_ID }}" >> .env
+        echo "SN_TESTNET_DEV_SECURITY_GROUP_ID=${{ env.SN_TESTNET_DEV_SECURITY_GROUP_ID }}" >> .env
+        echo "TERRAFORM_STATE_BUCKET_NAME=${{ env.TERRAFORM_STATE_BUCKET_NAME }}" >> .env
+    #
     # ======   Create Testnet   ======
-
+    #
     - name: Create testnet
       if: inputs.action == 'create'
       env:
         AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
-        CUSTOM_BIN_BRANCH_NAME: ${{ inputs.custom-node-bin-branch-name }}
-        CUSTOM_BIN_ORG_NAME: ${{ inputs.custom-node-bin-org-name }}
         NODE_COUNT: ${{ inputs.node-count }}
         PROVIDER: ${{ inputs.provider }}
+        RETRY_ATTEMPTS: ${{ inputs.re-attempts }}
         RUST_LOG: ${{ inputs.rust-log }}
+        SAFE_NETWORK_BRANCH: ${{ inputs.safe-network-branch }}
+        SAFE_NETWORK_USER: ${{ inputs.safe-network-user }}
         TESTNET_NAME: ${{ inputs.testnet-name }}
         VM_COUNT: ${{ inputs.vm-count }}
-        RETRY_ATTEMPTS: ${{ inputs.re-attempts }}
       shell: bash
       run: |
         set -e
 
-        if { [ -z "$CUSTOM_BIN_ORG_NAME" ] && [ -n "$CUSTOM_BIN_BRANCH_NAME" ]; } || 
-           { [ -n "$CUSTOM_BIN_ORG_NAME" ] && [ -z "$CUSTOM_BIN_BRANCH_NAME" ]; }; then
-          echo "Both CUSTOM_BIN_ORG_NAME and CUSTOM_BIN_BRANCH_NAME must be set if either are used."
-          exit 1
-        fi
-
         cd ~/sn-testnet-deploy
 
-        # +1 as default retry_attempts is 0
-        max_attempts=$((RETRY_ATTEMPTS + 1))
+        max_attempts=$((RETRY_ATTEMPTS + 1)) # +1 as default retry_attempts is 0
         for i in $(seq 1 $max_attempts); do
           echo "Attempt $i of $max_attempts"
           
-          # Temporarily turn off 'exit on error'
-          set +e
-          if [[ -n $CUSTOM_BIN_ORG_NAME ]]; then
+          set +e # Temporarily turn off 'exit on error'
+          if [[ -n $SAFE_NETWORK_USER ]]; then
             cargo run -- deploy \
               --name "$TESTNET_NAME" \
               --public-rpc \
               --provider "$PROVIDER" \
               --vm-count $VM_COUNT \
               --node-count $NODE_COUNT \
-              --repo-owner $CUSTOM_BIN_ORG_NAME \
-              --branch $CUSTOM_BIN_BRANCH_NAME \
-              --ansible-verbose
+              --repo-owner $SAFE_NETWORK_USER \
+              --branch $SAFE_NETWORK_BRANCH
           else
             cargo run -- deploy \
               --name "$TESTNET_NAME" \
               --public-rpc \
               --provider "$PROVIDER" \
               --vm-count $VM_COUNT \
-              --node-count $NODE_COUNT \
-              --ansible-verbose
+              --node-count $NODE_COUNT
           fi
           result=$?
-          # Re-enable 'exit on error'
-          set -e
+          set -e # Re-enable 'exit on error'
 
           if [[ $result -eq 0 ]]; then
             echo "Testnet tool completed successfully."
@@ -210,7 +198,7 @@ runs:
         done
 
         if [[ $result -ne 0 ]]; then
-          echo "All attempts to run testnet tool failed!!"
+          echo "Testnet creation failed"
           exit 1
         fi
 
@@ -239,9 +227,9 @@ runs:
       env:
         AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
         PROVIDER: ${{ inputs.provider }}
+        RETRY_ATTEMPTS: ${{ inputs.re-attempts }}
         RUST_LOG: ${{ inputs.rust-log }}
         TESTNET_NAME: ${{ inputs.testnet-name }}
-        RETRY_ATTEMPTS: ${{ inputs.re-attempts }}
       shell: bash
       run: |
         set -e
@@ -251,12 +239,10 @@ runs:
         for i in $(seq 1 $max_attempts); do
           echo "Attempt $i of $max_attempts"
           
-          # Temporarily turn off 'exit on error'
-          set +e
+          set +e # Temporarily turn off 'exit on error'
           cargo run -- clean --name "$TESTNET_NAME" --provider "$PROVIDER"
           result=$?
-          # Re-enable 'exit on error'
-          set -e
+          set -e # Re-enable 'exit on error'
 
           if [[ $result -eq 0 ]]; then
             echo "Testnet tool completed successfully."
@@ -267,12 +253,12 @@ runs:
         done
 
         if [[ $result -ne 0 ]]; then
-          echo "All attempts to run testnet tool failed!!"
+          echo "Destroying the testnet failed"
           exit 1
         fi
-
+    #
     # ======   Get resources   ======
-    
+    #
     - name: Get resources
       if: inputs.action == 'resources'
       env:
@@ -288,12 +274,10 @@ runs:
         for i in $(seq 1 $max_attempts); do
           echo "Attempt $i of $max_attempts"
           
-          # Temporarily turn off 'exit on error'
-          set +e
+          set +e # Temporarily turn off 'exit on error'
           cargo run -- logs rsync --name "$TESTNET_NAME" --provider "$PROVIDER" --resources-only
           result=$?
-          # Re-enable 'exit on error'
-          set -e
+          set -e # Re-enable 'exit on error'
 
           if [[ $result -eq 0 ]]; then
             echo "Testnet tool completed successfully."
@@ -304,7 +288,7 @@ runs:
         done
 
         if [[ $result -ne 0 ]]; then
-          echo "All attempts to run testnet tool failed!!"
+          echo "Get resources failed"
           exit 1
         fi
       
@@ -314,16 +298,16 @@ runs:
       with:
         name: wan_testnet_resources_${{ inputs.testnet-name }}
         path: ~/sn-testnet-deploy/logs/${{ inputs.testnet-name }}
-
+    #
     # ======   Rsync logs   ======
-    
+    #
     - name: Rsync logs
       if: inputs.action == 'logs'
       env:
         PROVIDER: ${{ inputs.provider }}
+        RETRY_ATTEMPTS: ${{ inputs.re-attempts }}
         RUST_LOG: ${{ inputs.rust-log }}
         TESTNET_NAME: ${{ inputs.testnet-name }}
-        RETRY_ATTEMPTS: ${{ inputs.re-attempts }}
       shell: bash
       run: |
         set -e
@@ -333,12 +317,10 @@ runs:
         for i in $(seq 1 $max_attempts); do
           echo "Attempt $i of $max_attempts"
           
-          # Temporarily turn off 'exit on error'
-          set +e
+          set +e # Temporarily turn off 'exit on error'
           cargo run -- logs rsync --name "$TESTNET_NAME" --provider "$PROVIDER"
           result=$?
-          # Re-enable 'exit on error'
-          set -e
+          set -e # Re-enable 'exit on error'
 
           if [[ $result -eq 0 ]]; then
             echo "Testnet tool completed successfully."
@@ -360,19 +342,20 @@ runs:
         name: wan_testnet_logs_${{ inputs.testnet-name }}
         path: ~/sn-testnet-deploy/logs/${{ inputs.testnet-name }}
 
+    #
     # ======   Fetch inventory   ======
-    
+    #
     - name: Fetch inventory
       if: inputs.action == 'inventory'
       env:
-        CUSTOM_BIN_ORG_NAME: ${{ inputs.custom-node-bin-org-name }}
-        CUSTOM_BIN_BRANCH_NAME: ${{ inputs.custom-node-bin-branch-name }}
         NODE_COUNT: ${{ inputs.node-count }}
         PROVIDER: ${{ inputs.provider }}
+        RETRY_ATTEMPTS: ${{ inputs.re-attempts }}
         RUST_LOG: ${{ inputs.rust-log }}
+        SAFE_NETWORK_BRANCH: ${{ inputs.safe-network-branch }}
+        SAFE_NETWORK_USER: ${{ inputs.safe-network-user }}
         TESTNET_NAME: ${{ inputs.testnet-name }}
         VM_COUNT: ${{ inputs.vm-count }}
-        RETRY_ATTEMPTS: ${{ inputs.re-attempts }}
       shell: bash
       run: |
         set -e
@@ -382,15 +365,14 @@ runs:
         for i in $(seq 1 $max_attempts); do
           echo "Attempt $i of $max_attempts"
           
-          # Temporarily turn off 'exit on error'
-          set +e
-          if [[ -n $CUSTOM_BIN_ORG_NAME ]]; then
+          set +e # Temporarily turn off 'exit on error'
+          if [[ -n $SAFE_NETWORK_USER ]]; then
             cargo run -- inventory \
               --name "$TESTNET_NAME" \
               --provider "$PROVIDER" \
               --node-count $NODE_COUNT \
-              --repo-owner $CUSTOM_BIN_ORG_NAME \
-              --branch $CUSTOM_BIN_BRANCH_NAME
+              --repo-owner $SAFE_NETWORK_USER \
+              --branch $SAFE_NETWORK_BRANCH
           else
             cargo run -- inventory \
               --name "$TESTNET_NAME" \
@@ -398,8 +380,7 @@ runs:
               --node-count $NODE_COUNT
 
           result=$?
-          # Re-enable 'exit on error'
-          set -e
+          set -e # Re-enable 'exit on error'
 
           if [[ $result -eq 0 ]]; then
             echo "Testnet tool completed successfully."
@@ -421,7 +402,7 @@ runs:
         name: wan_testnet_deployment_inventory_${{ inputs.testnet-name }}
         path: ~/.local/share/safe/testnet-deploy
 
-    # We don't want the action to change dirs on it's own
+    # We don't want the action to change dirs on its own
     - name: Change PWD back to the original DIR
       shell: bash
       run: |
