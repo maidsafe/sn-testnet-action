@@ -133,27 +133,37 @@ runs:
         cd ~
         echo "ORIGINAL_DIR=$(pwd)" >> $GITHUB_ENV
 
-        git clone --quiet --single-branch --depth 1 \
-          --branch $TESTNET_DEPLOY_BRANCH https://github.com/$TESTNET_DEPLOY_USER/sn-testnet-deploy
+        # This step can be be called multiple times during the same workflow. Hence we have to check if the file/folder
+        # exists before we can create them.
+        if [ ! -d "sn-testnet-deploy" ]; then
+          git clone --quiet --single-branch --depth 1 \
+            --branch $TESTNET_DEPLOY_BRANCH https://github.com/$TESTNET_DEPLOY_USER/sn-testnet-deploy
+        fi
 
-        mkdir ~/.ssh
-        echo "${{ inputs.ssh-secret-key }}" >> ~/.ssh/id_rsa
-        chmod 0400 ~/.ssh/id_rsa
-        ssh-keygen -y -f ~/.ssh/id_rsa > ~/.ssh/id_rsa.pub
+        if [ ! -f ~/.ssh/id_rsa ]; then
+          mkdir ~/.ssh
+          echo "${{ inputs.ssh-secret-key }}" >> ~/.ssh/id_rsa
+          chmod 0400 ~/.ssh/id_rsa
+          ssh-keygen -y -f ~/.ssh/id_rsa > ~/.ssh/id_rsa.pub
+        fi
 
-        mkdir ~/.ansible
-        echo "${{ inputs.ansible-vault-password }}" >> ~/.ansible/vault-password
+        if [ ! -f ~/.ansible/vault-password ]; then
+          mkdir ~/.ansible
+          echo "${{ inputs.ansible-vault-password }}" >> ~/.ansible/vault-password
+        fi
 
         cd sn-testnet-deploy
-        echo "ANSIBLE_VAULT_PASSWORD_PATH=/home/runner/.ansible/vault-password" >> .env
-        echo "AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}" >> .env
-        echo "AWS_DEFAULT_REGION=${{ env.AWS_DEFAULT_REGION }}" >> .env
-        echo "AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY }}" >> .env
-        echo "DO_PAT=${{ env.DO_PAT }}" >> .env
-        echo "SSH_KEY_PATH=/home/runner/.ssh/id_rsa" >> .env
-        echo "SN_TESTNET_DEV_SUBNET_ID=${{ env.SN_TESTNET_DEV_SUBNET_ID }}" >> .env
-        echo "SN_TESTNET_DEV_SECURITY_GROUP_ID=${{ env.SN_TESTNET_DEV_SECURITY_GROUP_ID }}" >> .env
-        echo "TERRAFORM_STATE_BUCKET_NAME=${{ env.TERRAFORM_STATE_BUCKET_NAME }}" >> .env
+        if [ ! -f ".env" ]; then
+          echo "ANSIBLE_VAULT_PASSWORD_PATH=/home/runner/.ansible/vault-password" >> .env
+          echo "AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}" >> .env
+          echo "AWS_DEFAULT_REGION=${{ env.AWS_DEFAULT_REGION }}" >> .env
+          echo "AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY }}" >> .env
+          echo "DO_PAT=${{ env.DO_PAT }}" >> .env
+          echo "SSH_KEY_PATH=/home/runner/.ssh/id_rsa" >> .env
+          echo "SN_TESTNET_DEV_SUBNET_ID=${{ env.SN_TESTNET_DEV_SUBNET_ID }}" >> .env
+          echo "SN_TESTNET_DEV_SECURITY_GROUP_ID=${{ env.SN_TESTNET_DEV_SECURITY_GROUP_ID }}" >> .env
+          echo "TERRAFORM_STATE_BUCKET_NAME=${{ env.TERRAFORM_STATE_BUCKET_NAME }}" >> .env
+        fi
     #
     # ======   Create Testnet   ======
     #
