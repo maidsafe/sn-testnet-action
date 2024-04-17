@@ -135,8 +135,8 @@ runs:
         cd ~
         echo "ORIGINAL_DIR=$(pwd)" >> $GITHUB_ENV
 
-        # This step can be be called multiple times during the same workflow. Hence we have to check if the file/folder
-        # exists before we can create them.
+        # This step can be be called multiple times during the same workflow. Hence we have to check
+        # if the file/folder exists before we can create them.
         if [ ! -d "sn-testnet-deploy" ]; then
           git clone --quiet --single-branch --depth 1 \
             --branch $TESTNET_DEPLOY_BRANCH https://github.com/$TESTNET_DEPLOY_USER/sn-testnet-deploy
@@ -176,7 +176,7 @@ runs:
         AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
         FAUCET_VERSION: ${{ inputs.faucet-version }}
         NODE_COUNT: ${{ inputs.node-count }}
-        PROTOCOL_VERSION: $${{ inputs.protocol-version }}
+        PROTOCOL_VERSION: ${{ inputs.protocol-version }}
         PROVIDER: ${{ inputs.provider }}
         PUBLIC_RPC: ${{ inputs.public-rpc }}
         RETRY_ATTEMPTS: ${{ inputs.re-attempts }}
