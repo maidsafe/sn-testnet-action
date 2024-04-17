@@ -31,6 +31,8 @@ inputs:
     description: Set to make node manager RPC daemons publicly accessible
     required: true
     default: false
+  protocol-version:
+    description: The network protocol version can be set to 'restricted' or any custom version string.
   provider:
     description: The cloud provider. Accepts 'aws' or 'digital-ocean'.
     required: true
@@ -174,6 +176,7 @@ runs:
         AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
         FAUCET_VERSION: ${{ inputs.faucet-version }}
         NODE_COUNT: ${{ inputs.node-count }}
+        PROTOCOL_VERSION: $${{ inputs.protocol-version }}
         PROVIDER: ${{ inputs.provider }}
         PUBLIC_RPC: ${{ inputs.public-rpc }}
         RETRY_ATTEMPTS: ${{ inputs.re-attempts }}
@@ -198,6 +201,7 @@ runs:
           --node-count $NODE_COUNT \
           --vm-count $VM_COUNT"
         [[ $ANSIBLE_VERBOSE == "true" ]] && command="$command --ansible-verbose"
+        [[ -n $PROTOCOL_VERSION ]] && command="$command --protocol-version $PROTOCOL_VERSION"
         [[ $PUBLIC_RPC == "true" ]] && command="$command --public-rpc"
         [[ -n $SAFE_VERSION ]] && command="$command --safe-version $SAFE_VERSION"
         [[ -n $SAFENODE_FEATURES ]] && command="$command --safenode-features $SAFENODE_FEATURES"
