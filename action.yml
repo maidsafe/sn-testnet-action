@@ -379,14 +379,10 @@ runs:
     - name: Fetch inventory
       if: inputs.action == 'list-inventory'
       env:
-        NODE_COUNT: ${{ inputs.node-count }}
         PROVIDER: ${{ inputs.provider }}
         RETRY_ATTEMPTS: ${{ inputs.re-attempts }}
         RUST_LOG: ${{ inputs.rust-log }}
-        SAFE_NETWORK_BRANCH: ${{ inputs.safe-network-branch }}
-        SAFE_NETWORK_USER: ${{ inputs.safe-network-user }}
         TESTNET_NAME: ${{ inputs.testnet-name }}
-        VM_COUNT: ${{ inputs.vm-count }}
       shell: bash
       run: |
         set -e
@@ -397,19 +393,7 @@ runs:
           echo "Attempt $i of $max_attempts"
           
           set +e # Temporarily turn off 'exit on error'
-          if [[ -n $SAFE_NETWORK_USER ]]; then
-            cargo run -- inventory \
-              --name "$TESTNET_NAME" \
-              --provider "$PROVIDER" \
-              --node-count $NODE_COUNT \
-              --repo-owner $SAFE_NETWORK_USER \
-              --branch $SAFE_NETWORK_BRANCH
-          else
-            cargo run -- inventory \
-              --name "$TESTNET_NAME" \
-              --provider "$PROVIDER" \
-              --node-count $NODE_COUNT
-
+          cargo run -- inventory --name "$TESTNET_NAME" --provider "$PROVIDER"
           result=$?
           set -e # Re-enable 'exit on error'
 
