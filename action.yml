@@ -90,7 +90,6 @@ runs:
         terraform_wrapper: false
 
     - name: Install tools
-      if: inputs.action == 'create'
       shell: bash
       run: |
         sudo apt-get update -y
