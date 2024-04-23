@@ -44,8 +44,6 @@ inputs:
     required: false
   safenode-features:
     description: Comma-separated list of features to be used when building a branch of safenode
-  safe-version:
-    description: Supply a version for safe. Otherwise the latest will be used.
   safenode-version:
     description: Supply a version for safenode. Otherwise the latest will be used.
   safenode-manager-version:
@@ -180,7 +178,6 @@ runs:
         PUBLIC_RPC: ${{ inputs.public-rpc }}
         RETRY_ATTEMPTS: ${{ inputs.re-attempts }}
         RUST_LOG: ${{ inputs.rust-log }}
-        SAFE_VERSION: ${{ inputs.safe-version }}
         SAFENODE_FEATURES: ${{ inputs.safenode-features }}
         SAFENODE_VERSION: ${{ inputs.safenode-version }}
         SAFENODE_MANAGER_VERSION: ${{ inputs.safenode-manager-version }}
@@ -203,7 +200,6 @@ runs:
         [[ -n $PROTOCOL_VERSION ]] && command="$command --protocol-version $PROTOCOL_VERSION"
         [[ $PUBLIC_RPC == "true" ]] && command="$command --public-rpc"
         [[ -n $FAUCET_VERSION ]] && command="$command --faucet-version $FAUCET_VERSION"
-        [[ -n $SAFE_VERSION ]] && command="$command --safe-version $SAFE_VERSION"
         [[ -n $SAFENODE_FEATURES ]] && command="$command --safenode-features $SAFENODE_FEATURES"
         [[ -n $SAFENODE_VERSION ]] && command="$command --safenode-version $SAFENODE_VERSION"
         [[ -n $SAFENODE_MANAGER_VERSION ]] && command="$command --safenode-manager-version $SAFENODE_MANAGER_VERSION"
