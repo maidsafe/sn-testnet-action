@@ -25,6 +25,8 @@ inputs:
     required: true
   faucet-version:
     description: Supply a version for the faucet. Otherwise the latest will be used.
+  network-contacts-file-name:
+    description: Provide a name for the network contacts file
   node-count:
     description: Number of nodes service instances to be started
   public-rpc:
@@ -172,6 +174,7 @@ runs:
         ANSIBLE_VERBOSE: ${{ inputs.ansible-verbose }}
         AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
         FAUCET_VERSION: ${{ inputs.faucet-version }}
+        NETWORK_CONTACTS_FILE_NAME: ${{ inputs.network-contacts-file-name }}
         NODE_COUNT: ${{ inputs.node-count }}
         PROTOCOL_VERSION: ${{ inputs.protocol-version }}
         PROVIDER: ${{ inputs.provider }}
@@ -200,6 +203,7 @@ runs:
         [[ -n $PROTOCOL_VERSION ]] && command="$command --protocol-version $PROTOCOL_VERSION"
         [[ $PUBLIC_RPC == "true" ]] && command="$command --public-rpc"
         [[ -n $FAUCET_VERSION ]] && command="$command --faucet-version $FAUCET_VERSION"
+        [[ -n $NETWORK_CONTACTS_FILE_NAME ]] && command="$command --network-contacts-file-name $NETWORK_CONTACTS_FILE_NAME"
         [[ -n $SAFENODE_FEATURES ]] && command="$command --safenode-features $SAFENODE_FEATURES"
         [[ -n $SAFENODE_VERSION ]] && command="$command --safenode-version $SAFENODE_VERSION"
         [[ -n $SAFENODE_MANAGER_VERSION ]] && command="$command --safenode-manager-version $SAFENODE_MANAGER_VERSION"
