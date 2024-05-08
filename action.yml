@@ -429,11 +429,15 @@ runs:
       if: inputs.action == 'print-inventory'
       env:
         PROVIDER: ${{ inputs.provider }}
+        NETWORK_CONTACTS_FILE_NAME: ${{ inputs.network-contacts-file-name }}
         TESTNET_NAME: ${{ inputs.testnet-name }}
       shell: bash
       run: |
         cd ~/sn-testnet-deploy
-        cargo run -- inventory --name $TESTNET_NAME --force-regeneration
+
+        command="cargo run -- inventory --name $TESTNET_NAME --force-regeneration"
+        [[ -n $NETWORK_CONTACTS_FILE_NAME ]] && command="$command --network-contacts-file-name $NETWORK_CONTACTS_FILE_NAME"
+        eval $command
 
 branding:
   icon: "globe"
