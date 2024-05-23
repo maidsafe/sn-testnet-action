@@ -20,6 +20,8 @@ inputs:
   aws-region:
     description: AWS region
     default: eu-west-2
+  beta-encryption-key:
+    description: Supply an encryption key that will be used with the auditor.
   do-token:
     description: Digital Ocean Authorization token
     required: true
@@ -70,7 +72,7 @@ inputs:
     description: >
       The branch for the sn-testnet-deploy repository. Enables using forks to test changes for
       testnet-deploy.
-    default: "main"
+    default: main
   testnet-deploy-user:
     description: >
       The user or organisation for the sn-testnet-deploy repository. Enables using forks to test
@@ -173,6 +175,7 @@ runs:
       env:
         ANSIBLE_VERBOSE: ${{ inputs.ansible-verbose }}
         AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
+        BETA_ENCRYPTION_KEY: ${{ inputs.beta-encryption-key }}
         FAUCET_VERSION: ${{ inputs.faucet-version }}
         NETWORK_CONTACTS_FILE_NAME: ${{ inputs.network-contacts-file-name }}
         NODE_COUNT: ${{ inputs.node-count }}
@@ -198,17 +201,18 @@ runs:
           --name $TESTNET_NAME \
           --provider $PROVIDER \
           --node-count $NODE_COUNT \
-          --vm-count $VM_COUNT"
-        [[ $ANSIBLE_VERBOSE == "true" ]] && command="$command --ansible-verbose"
-        [[ -n $PROTOCOL_VERSION ]] && command="$command --protocol-version $PROTOCOL_VERSION"
-        [[ $PUBLIC_RPC == "true" ]] && command="$command --public-rpc"
-        [[ -n $FAUCET_VERSION ]] && command="$command --faucet-version $FAUCET_VERSION"
-        [[ -n $NETWORK_CONTACTS_FILE_NAME ]] && command="$command --network-contacts-file-name $NETWORK_CONTACTS_FILE_NAME"
-        [[ -n $SAFENODE_FEATURES ]] && command="$command --safenode-features $SAFENODE_FEATURES"
-        [[ -n $SAFENODE_VERSION ]] && command="$command --safenode-version $SAFENODE_VERSION"
-        [[ -n $SAFENODE_MANAGER_VERSION ]] && command="$command --safenode-manager-version $SAFENODE_MANAGER_VERSION"
-        [[ -n $SAFE_NETWORK_BRANCH ]] && command="$command --branch $SAFE_NETWORK_BRANCH"
-        [[ -n $SAFE_NETWORK_USER ]] && command="$command --repo-owner $SAFE_NETWORK_USER"
+          --vm-count $VM_COUNT "
+        [[ $ANSIBLE_VERBOSE == "true" ]] && command="$command --ansible-verbose "
+        [[ -n $BETA_ENCRYPTION_KEY ]] && command="$command --beta-encryption-key $BETA_ENCRYPTION_KEY "
+        [[ -n $FAUCET_VERSION ]] && command="$command --faucet-version $FAUCET_VERSION "
+        [[ -n $NETWORK_CONTACTS_FILE_NAME ]] && command="$command --network-contacts-file-name $NETWORK_CONTACTS_FILE_NAME "
+        [[ -n $PROTOCOL_VERSION ]] && command="$command --protocol-version $PROTOCOL_VERSION "
+        [[ $PUBLIC_RPC == "true" ]] && command="$command --public-rpc "
+        [[ -n $SAFENODE_FEATURES ]] && command="$command --safenode-features $SAFENODE_FEATURES "
+        [[ -n $SAFENODE_VERSION ]] && command="$command --safenode-version $SAFENODE_VERSION "
+        [[ -n $SAFENODE_MANAGER_VERSION ]] && command="$command --safenode-manager-version $SAFENODE_MANAGER_VERSION "
+        [[ -n $SAFE_NETWORK_BRANCH ]] && command="$command --branch $SAFE_NETWORK_BRANCH "
+        [[ -n $SAFE_NETWORK_USER ]] && command="$command --repo-owner $SAFE_NETWORK_USER "
 
         max_attempts=$((RETRY_ATTEMPTS + 1)) # +1 as default retry_attempts is 0
         for i in $(seq 1 $max_attempts); do
