@@ -20,6 +20,9 @@ inputs:
   aws-region:
     description: AWS region
     default: eu-west-2
+  bootstrap-peer:
+    description: Optional starting contact for the network. If this is supplied no genesis, faucet or audit nodes will be created.
+    required: false
   beta-encryption-key:
     description: Supply an encryption key that will be used with the auditor.
   do-token:
@@ -176,6 +179,7 @@ runs:
         ANSIBLE_VERBOSE: ${{ inputs.ansible-verbose }}
         AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
         BETA_ENCRYPTION_KEY: ${{ inputs.beta-encryption-key }}
+        BOOTSTRAP_PEER: ${{ inputs.bootstrap-peer }}
         FAUCET_VERSION: ${{ inputs.faucet-version }}
         NETWORK_CONTACTS_FILE_NAME: ${{ inputs.network-contacts-file-name }}
         NODE_COUNT: ${{ inputs.node-count }}
@@ -204,6 +208,7 @@ runs:
           --vm-count $VM_COUNT "
         [[ $ANSIBLE_VERBOSE == "true" ]] && command="$command --ansible-verbose "
         [[ -n $BETA_ENCRYPTION_KEY ]] && command="$command --beta-encryption-key $BETA_ENCRYPTION_KEY "
+        [[ -n $BOOTSTRAP_PEER ]] && command="$command --bootstrap-peer $BOOTSTRAP_PEER "
         [[ -n $FAUCET_VERSION ]] && command="$command --faucet-version $FAUCET_VERSION "
         [[ -n $NETWORK_CONTACTS_FILE_NAME ]] && command="$command --network-contacts-file-name $NETWORK_CONTACTS_FILE_NAME "
         [[ -n $PROTOCOL_VERSION ]] && command="$command --protocol-version $PROTOCOL_VERSION "
@@ -217,7 +222,7 @@ runs:
         max_attempts=$((RETRY_ATTEMPTS + 1)) # +1 as default retry_attempts is 0
         for i in $(seq 1 $max_attempts); do
           echo "Attempt $i of $max_attempts"
-          
+
           set +e # Temporarily turn off 'exit on error'
           echo "Will run testnet-deploy with: $command"
           eval $command
@@ -273,7 +278,7 @@ runs:
         max_attempts=$((RETRY_ATTEMPTS + 1))
         for i in $(seq 1 $max_attempts); do
           echo "Attempt $i of $max_attempts"
-          
+
           set +e # Temporarily turn off 'exit on error'
           cargo run -- clean --name "$TESTNET_NAME" --provider "$PROVIDER"
           result=$?
@@ -308,7 +313,7 @@ runs:
         max_attempts=$((RETRY_ATTEMPTS + 1))
         for i in $(seq 1 $max_attempts); do
           echo "Attempt $i of $max_attempts"
-          
+
           set +e # Temporarily turn off 'exit on error'
           cargo run -- logs rsync --name "$TESTNET_NAME" --provider "$PROVIDER" --resources-only
           result=$?
@@ -326,7 +331,7 @@ runs:
           echo "Get resources failed"
           exit 1
         fi
-      
+
     - name: Upload the resources
       if: inputs.action == 'resources'
       uses: actions/upload-artifact@main
@@ -351,7 +356,7 @@ runs:
         max_attempts=$((RETRY_ATTEMPTS + 1))
         for i in $(seq 1 $max_attempts); do
           echo "Attempt $i of $max_attempts"
-          
+
           set +e # Temporarily turn off 'exit on error'
           cargo run -- logs rsync --name "$TESTNET_NAME" --provider "$PROVIDER"
           result=$?
@@ -395,7 +400,7 @@ runs:
         max_attempts=$((RETRY_ATTEMPTS + 1))
         for i in $(seq 1 $max_attempts); do
           echo "Attempt $i of $max_attempts"
-          
+
           set +e # Temporarily turn off 'exit on error'
           cargo run -- inventory --name "$TESTNET_NAME" --provider "$PROVIDER"
           result=$?
