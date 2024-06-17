@@ -30,6 +30,8 @@ inputs:
     required: true
   faucet-version:
     description: Supply a version for the faucet. Otherwise the latest will be used.
+  log-format:
+    description: Set the log format for the nodes, can be 'json' or 'default'. Defaults to 'default' if not set.
   network-contacts-file-name:
     description: Provide a name for the network contacts file
   node-count:
@@ -181,6 +183,7 @@ runs:
         BETA_ENCRYPTION_KEY: ${{ inputs.beta-encryption-key }}
         BOOTSTRAP_PEER: ${{ inputs.bootstrap-peer }}
         FAUCET_VERSION: ${{ inputs.faucet-version }}
+        LOG_FORMAT: ${{ inputs.log-format }}
         NETWORK_CONTACTS_FILE_NAME: ${{ inputs.network-contacts-file-name }}
         NODE_COUNT: ${{ inputs.node-count }}
         PROTOCOL_VERSION: ${{ inputs.protocol-version }}
@@ -210,6 +213,7 @@ runs:
         [[ -n $BETA_ENCRYPTION_KEY ]] && command="$command --beta-encryption-key $BETA_ENCRYPTION_KEY "
         [[ -n $BOOTSTRAP_PEER ]] && command="$command --bootstrap-peer $BOOTSTRAP_PEER "
         [[ -n $FAUCET_VERSION ]] && command="$command --faucet-version $FAUCET_VERSION "
+        [[ -n $LOG_FORMAT ]] && command="$command --log-format $LOG_FORMAT "
         [[ -n $NETWORK_CONTACTS_FILE_NAME ]] && command="$command --network-contacts-file-name $NETWORK_CONTACTS_FILE_NAME "
         [[ -n $PROTOCOL_VERSION ]] && command="$command --protocol-version $PROTOCOL_VERSION "
         [[ $PUBLIC_RPC == "true" ]] && command="$command --public-rpc "
