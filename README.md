@@ -54,22 +54,39 @@ Obviously, you need to substitute the job names here with your own.
 
 # Inputs
 
-|Input|Description|Required|Default|
-|---|---|:---:|:---:|
-|`do-token`|Digital Ocean Access Token|`true`|-|
-|`aws-access-key-id`|AWS Access Key ID|`true`|-|
-|`aws-access-key-secret`|AWS Access Key Secret|`true`|-|
-|`aws-default-region`|AWS Default region|`false`|`eu-west-2`|
-|`ssh-secret-key`|SSH key used to run the nodes on the Digital Ocean droplets|`true`|-|
-|`node-count`|Number of nodes to be deployed|`false`|`50`|
-|`node-path`|Path to the node binary|`false`*||
-|`node-version`|Node version|`false`*||
-|`build-node`|Should the node binary be built? Accepts `true` or `false`|`false`*|`false`|
-|`action`|Task to be carried out. Accepts `create` or `destroy`|`false`|`create`|
-
-
-`*` - Either `node-path` or `node-version` should be provided or `build-node` should be set to `true`. <br>
-If both `node-path` and `node-version` are supplied `node-version` takes precedence. `build-node` overrides both of them.
+| Name                      | Description                                                                                                            | Required | Default       |
+|---------------------------|------------------------------------------------------------------------------------------------------------------------|----------|---------------|
+| action                    | Accepts 'create', 'destroy', 'resources', 'logs', 'list-inventory', 'print-inventory'.                                 | true     |               |
+| ansible-vault-password    | Password for Ansible vault.                                                                                            | true     |               |
+| ansible-verbose           | Set to use verbose output for Ansible                                                                                  | true     | false         |
+| aws-access-key-id         | AWS access key ID                                                                                                      |          |               |
+| aws-access-key-secret     | AWS access key                                                                                                         |          |               |
+| aws-region                | AWS region                                                                                                             |          | eu-west-2     |
+| beta-encryption-key       | Supply an encryption key that will be used with the auditor.                                                           |          |               |
+| bootstrap-node-vm-count   | Number of bootstrap node VMs to be deployed                                                                            |          |               |
+| do-token                  | Digital Ocean Authorization token                                                                                      | true     |               |
+| faucet-version            | Supply a version for the faucet. Otherwise the latest will be used.                                                    |          |               |
+| log-format                | Set the log format for the nodes, can be 'json' or 'default'. Defaults to 'default' if not set.                        |          | default       |
+| network-contacts-file-name| Provide a name for the network contacts file                                                                           |          |               |
+| node-count                | Number of nodes service instances to be started                                                                        |          |               |
+| node-vm-count             | Number of node VMs to be deployed                                                                                      |          |               |
+| public-rpc                | Set to make node manager RPC daemons publicly accessible                                                               | true     | false         |
+| protocol-version          | The network protocol version can be set to 'restricted' or any custom version string.                                  |          |               |
+| provider                  | The cloud provider. Accepts 'aws' or 'digital-ocean'.                                                                  | true     |               |
+| re-attempts               | The number of times to re-run testnet-deploy in case of failures.                                                      |          | "0"           |
+| rust-log                  | Set RUST_LOG to this value for testnet-deploy                                                                          | false    |               |
+| safenode-features         | Comma-separated list of features to be used when building a branch of safenode                                         |          |               |
+| safenode-version          | Supply a version for safenode. Otherwise the latest will be used.                                                      |          |               |
+| safenode-manager-version  | Supply a version for safenode-manager. Otherwise the latest will be used.                                              |          |               |
+| safe-network-branch       | Build binaries from the specified safe_network branch. The testnet will use these binaries.                            |          |               |
+| safe-network-user         | Build binaries from the safe_network repository owned by this org or username. The testnet will use these binaries.    |          |               |
+| ssh-secret-key            | SSH key used to run the nodes on the Digital Ocean droplets                                                            |          |               |
+| subnet-id                 | If running on AWS, this is the subnet of the VPC on which the VMs will be created.                                     |          |               |
+| security-group-id         | If running on AWS, this is the ID of the security groups the VMs will use.                                             |          |               |
+| testnet-name              | The name of the testnet.                                                                                               | true     |               |
+| testnet-deploy-branch     | The branch for the sn-testnet-deploy repository. Enables using forks to test changes for testnet-deploy.               |          | main          |
+| testnet-deploy-user       | The user or organisation for the sn-testnet-deploy repository. Enables using forks to test changes for testnet-deploy. |          | maidsafe      |
+| uploader-vm-count         | Number of uploader VMs to be deployed                                                                                  |          |               |
 
 # License
 
