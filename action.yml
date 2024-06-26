@@ -20,11 +20,12 @@ inputs:
   aws-region:
     description: AWS region
     default: eu-west-2
-  bootstrap-peer:
-    description: Optional starting contact for the network. If this is supplied no genesis, faucet or audit nodes will be created.
-    required: false
   beta-encryption-key:
     description: Supply an encryption key that will be used with the auditor.
+  bootstrap-node-count:
+    description: Number of node services to run on each bootstrap node VM
+  bootstrap-node-vm-count:
+    description: Number of bootstrap node VMs to be deployed
   do-token:
     description: Digital Ocean Authorization token
     required: true
@@ -35,7 +36,9 @@ inputs:
   network-contacts-file-name:
     description: Provide a name for the network contacts file
   node-count:
-    description: Number of nodes service instances to be started
+    description: Number of node services to run on each node VM
+  node-vm-count:
+    description: Number of node VMs to be deployed
   public-rpc:
     description: Set to make node manager RPC daemons publicly accessible
     required: true
@@ -83,8 +86,8 @@ inputs:
       The user or organisation for the sn-testnet-deploy repository. Enables using forks to test
       changes for testnet-deploy.
     default: maidsafe
-  vm-count:
-    description: Number of node VMs to be deployed
+  uploader-vm-count:
+    description: Number of uploader VMs to be deployed
 
 runs:
   using: composite
@@ -121,9 +124,6 @@ runs:
         AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
         AWS_SECRET_ACCESS_KEY: ${{ inputs.aws-access-key-secret }}
         DO_PAT: ${{ inputs.do-token }}
-        NODE_COUNT: ${{ inputs.node-count }}
-        PROVIDER: ${{ inputs.provider }}
-        RUST_LOG: ${{ inputs.rust-log }}
         SAFE_NETWORK_BRANCH: ${{ inputs.safe-network-branch }}
         SAFE_NETWORK_USER: ${{ inputs.safe-network-user }}
         SN_TESTNET_DEV_SECURITY_GROUP_ID: ${{ inputs.security-group-id }}
@@ -131,8 +131,6 @@ runs:
         TERRAFORM_STATE_BUCKET_NAME: maidsafe-org-infra-tfstate
         TESTNET_DEPLOY_BRANCH: ${{ inputs.testnet-deploy-branch }}
         TESTNET_DEPLOY_USER: ${{ inputs.testnet-deploy-user }}
-        TESTNET_NAME: ${{ inputs.testnet-name }}
-        VM_COUNT: ${{ inputs.vm-count }}
       run: |
         set -e
 
@@ -181,11 +179,13 @@ runs:
         ANSIBLE_VERBOSE: ${{ inputs.ansible-verbose }}
         AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
         BETA_ENCRYPTION_KEY: ${{ inputs.beta-encryption-key }}
-        BOOTSTRAP_PEER: ${{ inputs.bootstrap-peer }}
+        BOOTSTRAP_NODE_COUNT: ${{ inputs.bootstrap-node-count }}
+        BOOTSTRAP_NODE_VM_COUNT: ${{ inputs.bootstrap-node-vm-count }}
         FAUCET_VERSION: ${{ inputs.faucet-version }}
         LOG_FORMAT: ${{ inputs.log-format }}
         NETWORK_CONTACTS_FILE_NAME: ${{ inputs.network-contacts-file-name }}
         NODE_COUNT: ${{ inputs.node-count }}
+        NODE_VM_COUNT: ${{ inputs.node-vm-count }}
         PROTOCOL_VERSION: ${{ inputs.protocol-version }}
         PROVIDER: ${{ inputs.provider }}
         PUBLIC_RPC: ${{ inputs.public-rpc }}
@@ -197,7 +197,7 @@ runs:
         SAFE_NETWORK_BRANCH: ${{ inputs.safe-network-branch }}
         SAFE_NETWORK_USER: ${{ inputs.safe-network-user }}
         TESTNET_NAME: ${{ inputs.testnet-name }}
-        VM_COUNT: ${{ inputs.vm-count }}
+        UPLOADER_VM_COUNT: ${{ inputs.uploader-vm-count }}
       shell: bash
       run: |
         set -e
@@ -206,15 +206,16 @@ runs:
 
         command="cargo run -- deploy \
           --name $TESTNET_NAME \
-          --provider $PROVIDER \
-          --node-count $NODE_COUNT \
-          --vm-count $VM_COUNT "
+          --provider $PROVIDER "
         [[ $ANSIBLE_VERBOSE == "true" ]] && command="$command --ansible-verbose "
         [[ -n $BETA_ENCRYPTION_KEY ]] && command="$command --beta-encryption-key $BETA_ENCRYPTION_KEY "
-        [[ -n $BOOTSTRAP_PEER ]] && command="$command --bootstrap-peer $BOOTSTRAP_PEER "
+        [[ -n $BOOTSTRAP_NODE_COUNT ]] && command="$command --bootstrap-node-count $BOOTSTRAP_NODE_COUNT "
+        [[ -n $BOOTSTRAP_NODE_VM_COUNT ]] && command="$command --bootstrap-node-vm-count $BOOTSTRAP_NODE_VM_COUNT "
         [[ -n $FAUCET_VERSION ]] && command="$command --faucet-version $FAUCET_VERSION "
         [[ -n $LOG_FORMAT ]] && command="$command --log-format $LOG_FORMAT "
         [[ -n $NETWORK_CONTACTS_FILE_NAME ]] && command="$command --network-contacts-file-name $NETWORK_CONTACTS_FILE_NAME "
+        [[ -n $NODE_COUNT ]] && command="$command --node-count $NODE_VM_COUNT "
+        [[ -n $NODE_VM_COUNT ]] && command="$command --node-vm-count $NODE_VM_COUNT "
         [[ -n $PROTOCOL_VERSION ]] && command="$command --protocol-version $PROTOCOL_VERSION "
         [[ $PUBLIC_RPC == "true" ]] && command="$command --public-rpc "
         [[ -n $SAFENODE_FEATURES ]] && command="$command --safenode-features $SAFENODE_FEATURES "
@@ -222,6 +223,7 @@ runs:
         [[ -n $SAFENODE_MANAGER_VERSION ]] && command="$command --safenode-manager-version $SAFENODE_MANAGER_VERSION "
         [[ -n $SAFE_NETWORK_BRANCH ]] && command="$command --branch $SAFE_NETWORK_BRANCH "
         [[ -n $SAFE_NETWORK_USER ]] && command="$command --repo-owner $SAFE_NETWORK_USER "
+        [[ -n $UPLOADER_VM_COUNT ]] && command="$command --uploader-vm-count $UPLOADER_VM_COUNT "
 
         max_attempts=$((RETRY_ATTEMPTS + 1)) # +1 as default retry_attempts is 0
         for i in $(seq 1 $max_attempts); do
