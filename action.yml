@@ -6,6 +6,8 @@ inputs:
       Task to be carried out.
       Accepts 'create', 'destroy', 'resources', 'logs', 'list-inventory', 'print-inventory'.
     required: true
+  ansible-forks:
+    description: The number of forks to use with Ansible
   ansible-vault-password:
     description: Password for Ansible vault.
     required: true
@@ -176,6 +178,7 @@ runs:
     - name: Create testnet
       if: inputs.action == 'create'
       env:
+        ANSIBLE_FORKS: ${{ inputs.ansible-forks }}
         ANSIBLE_VERBOSE: ${{ inputs.ansible-verbose }}
         AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
         BETA_ENCRYPTION_KEY: ${{ inputs.beta-encryption-key }}
@@ -207,6 +210,7 @@ runs:
         command="cargo run -- deploy \
           --name $TESTNET_NAME \
           --provider $PROVIDER "
+        [[ -n $ANSIBLE_FORKS ]] && command="$command --forks $ANSIBLE_FORKS "
         [[ $ANSIBLE_VERBOSE == "true" ]] && command="$command --ansible-verbose "
         [[ -n $BETA_ENCRYPTION_KEY ]] && command="$command --beta-encryption-key $BETA_ENCRYPTION_KEY "
         [[ -n $BOOTSTRAP_NODE_COUNT ]] && command="$command --bootstrap-node-count $BOOTSTRAP_NODE_COUNT "
