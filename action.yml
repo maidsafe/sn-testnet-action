@@ -4,7 +4,7 @@ inputs:
   action:
     description: >
       Task to be carried out.
-      Accepts 'create', 'destroy', 'resources', 'logs', 'list-inventory', 'print-inventory'.
+      Accepts 'create', 'destroy', 'resources', 'logs', 'list-inventory', 'print-inventory', 'upscale'.
     required: true
   ansible-forks:
     description: The number of forks to use with Ansible
@@ -460,6 +460,41 @@ runs:
 
         command="cargo run -- inventory --name $TESTNET_NAME --force-regeneration"
         [[ -n $NETWORK_CONTACTS_FILE_NAME ]] && command="$command --network-contacts-file-name $NETWORK_CONTACTS_FILE_NAME"
+        eval $command
+    #
+    # ======   Upscale   ======
+    #
+    - name: Upscale network
+      if: inputs.action == 'upscale'
+      env:
+        AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
+        DESIRED_BOOTSTRAP_NODE_COUNT: ${{ inputs.bootstrap-node-count }}
+        DESIRED_BOOTSTRAP_NODE_VM_COUNT: ${{ inputs.bootstrap-node-vm-count }}
+        DESIRED_NODE_COUNT: ${{ inputs.node-count }}
+        DESIRED_NODE_VM_COUNT: ${{ inputs.node-vm-count }}
+        DESIRED_UPLOADER_VM_COUNT: ${{ inputs.uploader-vm-count }}
+        PROVIDER: ${{ inputs.provider }}
+        PUBLIC_RPC: ${{ inputs.public-rpc }}
+        RUST_LOG: ${{ inputs.rust-log }}
+        SAFE_NETWORK_BRANCH: ${{ inputs.safe-network-branch }}
+        SAFE_NETWORK_USER: ${{ inputs.safe-network-user }}
+        TESTNET_NAME: ${{ inputs.testnet-name }}
+      shell: bash
+      run: |
+        set -e
+
+        cd ~/sn-testnet-deploy
+
+        command="cargo run -- upscale \
+          --name $TESTNET_NAME \
+          --provider $PROVIDER "
+        [[ -n $DESIRED_BOOTSTRAP_NODE_COUNT ]] && command="$command --desired-bootstrap-node-count $DESIRED_BOOTSTRAP_NODE_COUNT "
+        [[ -n $DESIRED_BOOTSTRAP_NODE_VM_COUNT ]] && command="$command --desired-bootstrap-node-vm-count $DESIRED_BOOTSTRAP_NODE_VM_COUNT "
+        [[ -n $DESIRED_NODE_COUNT ]] && command="$command --desired-node-count $DESIRED_NODE_COUNT "
+        [[ -n $DESIRED_NODE_VM_COUNT ]] && command="$command --desired-node-vm-count $DESIRED_NODE_VM_COUNT "
+        [[ -n $DESIRED_UPLOADER_VM_COUNT ]] && command="$command --desired-uploader-vm-count $DESIRED_UPLOADER_VM_COUNT "
+        [[ $PUBLIC_RPC == "true" ]] && command="$command --public-rpc "
+
         eval $command
 
 branding:
