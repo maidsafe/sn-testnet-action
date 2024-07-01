@@ -69,6 +69,8 @@ inputs:
     description: >
       Build binaries from the safe_network repository owned by this org or username. The testnet
       will use these binaries.
+  sn-auditor-version:
+    description: Supply a version for the sn-auditor. Otherwise the latest will be used.
   ssh-secret-key:
     description: SSH key used to run the nodes on the Digital Ocean droplets
   subnet-id:
@@ -199,6 +201,7 @@ runs:
         SAFENODE_MANAGER_VERSION: ${{ inputs.safenode-manager-version }}
         SAFE_NETWORK_BRANCH: ${{ inputs.safe-network-branch }}
         SAFE_NETWORK_USER: ${{ inputs.safe-network-user }}
+        SN_AUDITOR_VERSION: ${{ inputs.sn-auditor-version }}
         TESTNET_NAME: ${{ inputs.testnet-name }}
         UPLOADER_VM_COUNT: ${{ inputs.uploader-vm-count }}
       shell: bash
@@ -225,6 +228,7 @@ runs:
         [[ -n $SAFENODE_FEATURES ]] && command="$command --safenode-features $SAFENODE_FEATURES "
         [[ -n $SAFENODE_VERSION ]] && command="$command --safenode-version $SAFENODE_VERSION "
         [[ -n $SAFENODE_MANAGER_VERSION ]] && command="$command --safenode-manager-version $SAFENODE_MANAGER_VERSION "
+        [[ -n $SN_AUDITOR_VERSION ]] && command="$command --sn-auditor-version $SN_AUDITOR_VERSION "
         [[ -n $SAFE_NETWORK_BRANCH ]] && command="$command --branch $SAFE_NETWORK_BRANCH "
         [[ -n $SAFE_NETWORK_USER ]] && command="$command --repo-owner $SAFE_NETWORK_USER "
         [[ -n $UPLOADER_VM_COUNT ]] && command="$command --uploader-vm-count $UPLOADER_VM_COUNT "
