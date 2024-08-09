@@ -31,6 +31,11 @@ inputs:
   do-token:
     description: Digital Ocean Authorization token
     required: true
+  environment-type:
+    description: >
+      Possible values are 'development', 'staging' and 'production'. This value determines the sizes
+      and counts of VMs. The counts can be overridden with the other count inputs.
+    required: true
   faucet-version:
     description: Supply a version for the faucet. Otherwise the latest will be used.
   log-format:
@@ -188,6 +193,7 @@ runs:
         BETA_ENCRYPTION_KEY: ${{ inputs.beta-encryption-key }}
         BOOTSTRAP_NODE_COUNT: ${{ inputs.bootstrap-node-count }}
         BOOTSTRAP_NODE_VM_COUNT: ${{ inputs.bootstrap-node-vm-count }}
+        ENVIRONMENT_TYPE: ${{ inputs.environment-type }}
         FAUCET_VERSION: ${{ inputs.faucet-version }}
         LOG_FORMAT: ${{ inputs.log-format }}
         NETWORK_CONTACTS_FILE_NAME: ${{ inputs.network-contacts-file-name }}
@@ -215,6 +221,7 @@ runs:
 
         command="cargo run -- deploy \
           --name $TESTNET_NAME \
+          --environment-type $ENVIRONMENT_TYPE \
           --provider $PROVIDER "
         [[ -n $ANSIBLE_FORKS ]] && command="$command --forks $ANSIBLE_FORKS "
         [[ $ANSIBLE_VERBOSE == "true" ]] && command="$command --ansible-verbose "
